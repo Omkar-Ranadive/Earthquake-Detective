@@ -4,10 +4,15 @@ from obspy.clients.fdsn.header import FDSNException
 from obspy.geodetics.base import gps2dist_azimuth
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib as mpl
 import os
 import constants
 from scipy.io import wavfile
 import numpy as np
+
+# This parameter will prevent matplotlib from throwing errors for plots with large data points
+mpl.rcParams['agg.path.chunksize'] = 10000
+
 
 
 def create_folders(event_id):
@@ -40,7 +45,8 @@ def create_folders(event_id):
     return folder_path
 
 
-def download_data(event_id, stations, min_magnitude=7, event_client="USGS", stat_client="IRIS",
+def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
+                  event_et=3600, stat_client="IRIS",
                   process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True):
     """
     Download and save the raw data
@@ -50,6 +56,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS", stat
                                    location, channel]
         min_magnitude (float): Events >= min_magnitude will be retrieved
         event_client (str): Client to use for retrieving events
+        event_et (int): Specifies how long the event range should be from start time (in seconds)
         stat_client (str): Client to use for retrieving waveforms and inventory info
         process_d (bool): If true, the raw data is also processed
         sampling_rate (int): Sampling rate in Hz
@@ -63,10 +70,11 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS", stat
     # Download event information with mag >= min_magnitude
     e_client = Client(event_client)
     event_id_utc = UTCDateTime(event_id)
-    event_cat = e_client.get_events(starttime=event_id_utc - 100, endtime=event_id_utc + 3600,
+    event_cat = e_client.get_events(starttime=event_id_utc - 100, endtime=event_id_utc + event_et,
                                     minmagnitude=min_magnitude)
     # For each event, find local earthquakes
     s_client = Client(stat_client)
+    print(event_cat)
     for event in event_cat:
         origin = event.preferred_origin()
         start_time = origin.time
@@ -80,7 +88,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS", stat
                                              channel=cha, level="response")
             except FDSNException:
                 print("Failed to download inventory information {} {}".format(net, sta))
-
+        print("Inventory downloaded")
         # Get the Seismograms
         st = Stream()
         for net, sta, loc, cha in stations:
@@ -90,7 +98,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS", stat
                                              attach_response=True)
             except FDSNException:
                 print("Failed to download waveform information for {} {}".format(net, sta))
-
+        print("Seismograms trimmed")
         # Check for split-streams and remove them
         # These are basically corrupt streams with discontinuities between them
         for tr in st:
@@ -209,20 +217,26 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         event_id = event_id.replace(char, "_")
 
     # Create the plots using matplotlib
+    fig, ax = plt.subplots()
+
     for tr in st:
-        fig, ax = plt.subplots()
         # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
         ax.plot(tr.times('matplotlib'), tr.data, c='b')
         # Format x axis in readable data format
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         ax.xaxis_date()
+        # Limit the y axis to known local earthquake range.
+        ax.set_ylim(-1e-7, 1e-7)
         fig.autofmt_xdate()
+
         # Save the figure
         figure_path = folder_path / 'plots'
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
                             tr.stats.channel, event_id))
         file_path = figure_path / (file_id + ".png")
+        # plt.show()
         plt.savefig(file_path, dpi=300)
+        plt.cla()
 
 
 def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
@@ -242,7 +256,8 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         speed (int): Used to calculate audio sampling rate. Speed = 200 causes loss of low
                     frequencies, speed = 1600, causes loss of high frequencies. 400 is the default
                     "medium" speed rate
-        damping (float): Amount by which to damp the sound
+        damping (float): Amount by which to damp the sound. If damping is larger,
+                        audio amplitude will be smaller. If lower, amplitude will be larger.
 
     """
     # Make sure folders are created
@@ -273,7 +288,7 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         new_sampling_rate = speed * sampling_rate
         duration = tr.stats.npts/new_sampling_rate
 
-        # Scale the waveform to make it audible
+        # Scale the sound w.r.t arc tangent curve
         scaled_sound = (2**31)*np.arctan(tr.data/damping)*2/np.pi
 
         # Clean the event-id and generate the file-id
@@ -287,28 +302,3 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         file_path = audio_path / (file_id + ".mp3")
 
         wavfile.write(file_path, rate=int(new_sampling_rate), data=np.int32(scaled_sound))
-
-
-if __name__ == '__main__':
-    event_date = "2010_02_27"
-    event_time = "T06_34_13.000"
-    event_id = event_date + event_time
-    stations = [['CI', 'SHO', '', 'BHZ,BHN,BHE']]
-
-    download_data(event_id, stations, min_magnitude=7)
-    # download_data(event_id, min_magnitude=7)
-    # client = Client("IRIS")
-    # starttime = UTCDateTime("2001-01-01")
-    # endtime = UTCDateTime("2001-01-02")
-    # inventory = client.get_stations(network="IU", station="A*",
-    #                                 channel="BHZ",
-    #                                 starttime=starttime,
-    #                                 endtime=endtime)
-    # print(inventory)
-    #
-
-    # test = UTCDateTime(event_id)
-    # print(test.timestamp)
-    # print(mdates.epoch2num(test.timestamp))
-    # import datetime
-    # print(float(datetime.datetime(1970, 1, 1).toordinal()))
