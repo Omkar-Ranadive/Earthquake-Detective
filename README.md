@@ -17,7 +17,14 @@ conda install cartopy
 ```
 
 ## To-do list 
-- [ ]  Re-write the data processing functions - Downloading raw data, processing it and generating plots 
-- [ ]  Function to convert Seismograms to audio data 
+- [X]  Re-write the data processing functions - Downloading raw data, processing it and 
+generating plots 
+- [X]  Function to convert Seismograms to audio data 
 - [ ]  Machine learning classifier for earthquakes vs rest 
-- [ ]  Coupling together local traces with larger earthquake traces which could have wave information from larger earthquake traces 
+- [ ]  Coupling together local traces with larger earthquake traces which could have wave 
+information from larger earthquake traces 
+- [ ]  Explore the possibility of weighing the samples. Example - Stations close to each other 
+are more likely to show earthquake at a given time if one of the station's data can be labelled 
+as earthquake. Possibly explore record section graphs for this.  
+- [ ] Sending more data to Zooniverse platform 
+

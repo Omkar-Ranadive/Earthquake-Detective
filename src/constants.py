@@ -6,5 +6,6 @@ from pathlib import Path
 
 
 # Directory paths
-DATA_PATH = Path('../data')
+PARENT_PATH = Path(__file__).parent
+DATA_PATH = PARENT_PATH / '../data'
 

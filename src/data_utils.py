@@ -9,10 +9,10 @@ import os
 import constants
 from scipy.io import wavfile
 import numpy as np
+from utils import clean_event_id
 
 # This parameter will prevent matplotlib from throwing errors for plots with large data points
 mpl.rcParams['agg.path.chunksize'] = 10000
-
 
 
 def create_folders(event_id):
@@ -26,7 +26,7 @@ def create_folders(event_id):
     """
 
     # Replace ':' with '_' as it that is an illegal directory char on Windows
-    event_id = event_id.replace(':', '_')
+    event_id = clean_event_id(event_id)
 
     # Create the required folders
     folder_path = constants.DATA_PATH / event_id
@@ -109,10 +109,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         raw_path = folder_path / 'raw_data'
 
         # Replace '.' and '-' in event_id before saving
-        char_to_replace = ['.', '-', ':']
-        event_id_new = event_id
-        for char in char_to_replace:
-            event_id_new = event_id_new.replace(char, "_")
+        event_id_new = clean_event_id(event_id)
 
         # Save the files
         for tr in st:
@@ -160,9 +157,7 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
                        water_level=water_level)
 
     # Replace '.' and '-' and ':' in event_id before saving
-    char_to_replace = ['.', '-', ':']
-    for char in char_to_replace:
-        event_id = event_id.replace(char, "_")
+    event_id = clean_event_id(event_id)
 
     # Save the files
     processed_path = folder_path / 'processed_data'
@@ -212,9 +207,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         tr.trim(starttime=start, endtime=end, pad=True, nearest_sample=False, fill_value=0)
 
     # Replace '.' and '-' in event_id before saving
-    char_to_replace = ['.', '-', ':']
-    for char in char_to_replace:
-        event_id = event_id.replace(char, "_")
+    event_id = clean_event_id(event_id)
 
     # Create the plots using matplotlib
     fig, ax = plt.subplots()
@@ -292,9 +285,7 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         scaled_sound = (2**31)*np.arctan(tr.data/damping)*2/np.pi
 
         # Clean the event-id and generate the file-id
-        char_to_replace = ['.', '-', ':']
-        for char in char_to_replace:
-            event_id = event_id.replace(char, "_")
+        event_id = clean_event_id(event_id)
 
         audio_path = folder_path / 'audio'
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,

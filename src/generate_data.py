@@ -35,7 +35,6 @@ def load_info_from_labels(path):
         for line in f.readlines():
             info = line.split()
             # Separate event id from station info
-
             id_stat_dict[info[0]].append([info[1], info[2], "", info[3]])
 
     return id_stat_dict
