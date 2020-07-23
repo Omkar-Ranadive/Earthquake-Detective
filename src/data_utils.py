@@ -214,21 +214,39 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
     for tr in st:
         # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
+        x_coordinates = tr.times('matplotlib')
+
         ax.plot(tr.times('matplotlib'), tr.data, c='b')
         # Format x axis in readable data format
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         ax.xaxis_date()
         # Limit the y axis to known local earthquake range.
         ax.set_ylim(-1e-7, 1e-7)
+        # Trim any unnecessary space around x axis by limiting to its range
+        ax.set_xlim(left=np.min(x_coordinates), right=np.max(x_coordinates))
+        # Hide the y-axis values
+        ax.get_yaxis().set_ticks([])
+
+        ax.set_xlabel('Time (UTC)')
+
+        # Set the axis locators (doesn't affect the data values, only makes the plot look better)
+        ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=5))
+        ax.xaxis.set_minor_locator(mdates.MinuteLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         fig.autofmt_xdate()
+        # Rotate the data labels for a tight fit
+        ax.xaxis.set_tick_params(rotation=70)
+
+        # Cut out unnecessary empty space from figure
+        plt.subplots_adjust(left=0.001, right=0.999, top=1.0, bottom=0.35)
 
         # Save the figure
         figure_path = folder_path / 'plots'
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
                             tr.stats.channel, event_id))
         file_path = figure_path / (file_id + ".png")
-        # plt.show()
-        plt.savefig(file_path, dpi=300)
+
+        plt.savefig(file_path, dpi=300,  bbox_inches='tight', pad_inches=0)
         plt.cla()
 
 

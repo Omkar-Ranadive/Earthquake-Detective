@@ -2,3 +2,5 @@ numpy
 obspy
 pandas
 panoptes-client
+python-magic
+libmagic

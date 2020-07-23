@@ -5,15 +5,17 @@ import os
 import warnings
 
 
-def load_data(file_name, training_folder):
+def load_data(file_name, training_folder, folder_type="processed_data"):
     """
 
     Args:
-        file_name: Text file from which contains info on data. Assumption:
-                   Lines in file  are of the form: Time_stamp network station component label
-        training_folder: Folder name which contains the actual training data
+        file_name (str): Path to text file from which contains info on data. Assumption:
+                       Lines in file  are of the form: Time_stamp network station component label
+        training_folder (str): Folder name which contains the actual training data
+        folder_type (str): Specify what kind of data to load (processed_data, raw_data, audio,
+                           plots). Default = processed_data
 
-    Returns:
+    Returns (list): Two lists X and Y where X = training data, Y = training labels
 
     """
     fl_map = generate_file_name_from_labels(file_name)
@@ -21,7 +23,6 @@ def load_data(file_name, training_folder):
     train_path = DATA_PATH / training_folder
 
     for folder, files in fl_map.items():
-        folder_type = "processed_data"
         folder_path = train_path / folder / folder_type
         for file in files:
             # File is a list of following form = [file_name, label]
@@ -34,8 +35,9 @@ def load_data(file_name, training_folder):
                 # Warn users if some file is not found
                 warnings.warn("File not found: {}".format(file[0]))
 
-    print(len(X))
-    print(len(Y))
+    return X, Y
 
 
-load_data('../../data/V_golden.txt', training_folder='Training_Set_Vivian')
+X, Y = load_data('../../data/V_golden.txt', training_folder='Training_Set_Vivian')
+for sample in X:
+    print(sample.data.shape)
