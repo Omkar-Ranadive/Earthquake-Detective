@@ -41,6 +41,8 @@ def create_folders(event_id):
         os.mkdir(folder_path / "plots")
     if not os.path.exists(folder_path / 'audio'):
         os.mkdir(folder_path / 'audio')
+    if not os.path.exists(folder_path / 'trimmed_data'):
+        os.mkdir(folder_path / 'trimmed_data')
 
     return folder_path
 
@@ -208,6 +210,15 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
     # Replace '.' and '-' in event_id before saving
     event_id = clean_event_id(event_id)
+
+    # Save the trimmed files
+    trimmed_path = folder_path / 'trimmed_data'
+
+    for tr in st:
+        file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
+                            tr.stats.channel, event_id))
+        file_path = trimmed_path / (file_id + ".sac")
+        tr.write(str(file_path), format='SAC')
 
     # Create the plots using matplotlib
     fig, ax = plt.subplots()

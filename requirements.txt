@@ -4,3 +4,4 @@ pandas
 panoptes-client
 python-magic
 libmagic
+tensorboard

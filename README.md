@@ -19,6 +19,7 @@ pip install -r requirements.txt
 ```
 conda install cartopy 
 ```
+* Install PyTorch by following the instructions [here.](https://pytorch.org/get-started/locally/)
 
 ## Additional Instructions (Windows): 
 * For libmagic to correctly work, follow the instructions [here.](https://github.com/ahupp/python-magic#windows)
