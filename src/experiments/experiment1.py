@@ -5,12 +5,13 @@ from ml.dataset import QuakeDataSet
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import numpy as np
+from ml.trainer import train
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 X, Y, X_names = load_data('../../data/V_golden.txt', training_folder='Training_Set_Vivian')
 
 # Hyper parameters
-num_epochs = 50
+num_epochs = 100
 batch_size = X.shape[0]
 learning_rate = 1e-3
 
@@ -30,23 +31,5 @@ writer = SummaryWriter('runs/{}'.format(exp_id))
 
 
 # Train the model
-for epoch in range(num_epochs):
-    total_loss = []
-    for index, data in enumerate(dataloader):
-        batch_in = data['data'].to(device)
-        batch_out = data['label'].to(device)
-        output = model(batch_in)
-
-        # Calculate loss
-        loss = loss_func(output, batch_out)
-
-        print("Loss: {}".format(loss))
-        total_loss.append(loss.item())
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    writer.add_scalar('Avg Loss', np.mean(total_loss), epoch)
-
-writer.flush()
-writer.close()
+train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
+      optimizer=optimizer, dataloader=dataloader, exp_id=exp_id, writer=writer, save_freq=30)
