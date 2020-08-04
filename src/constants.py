@@ -16,3 +16,5 @@ label_dict = {'Earthquake': 0,
               'Unclear_Event': 2,
               'Tremor': 3}
 
+folder_labels = {'positive': 0,
+                 'negative': 1}

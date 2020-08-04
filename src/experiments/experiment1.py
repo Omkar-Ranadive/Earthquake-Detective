@@ -8,28 +8,39 @@ import numpy as np
 from ml.trainer import train
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-X, Y, X_names = load_data('../../data/V_golden.txt', training_folder='Training_Set_Vivian')
+# X, Y, X_names = load_data('../../data/V_golden.txt', training_folder='Training_Set_Vivian')
+
 
 # Hyper parameters
 num_epochs = 100
-batch_size = X.shape[0]
+batch_size = 150
 learning_rate = 1e-3
 
 # Load the data as PyTorch tensors
-ds = QuakeDataSet(X, Y, X_names)
+ld_files = [{'file_name': '../../data/V_golden.txt', 'training_folder': 'Training_Set_Vivian',
+             'folder_type': 'trimmed_data'}]
+
+ld_folders = [{'training_folder': 'Training_Set_Prem', 'folder_type': 'positive'}]
+
+ds = QuakeDataSet(ld_files=ld_files, ld_folders=ld_folders, excerpt_len=20000)
 dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size)
 
+
+for index, d in enumerate(dataloader):
+    print(d['data'].shape)
+
+
 # Initialize the model
-model = ml.models.FeatureExtractor().to(device)
-loss_func = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# model = ml.models.FeatureExtractor().to(device)
+# loss_func = torch.nn.CrossEntropyLoss()
+# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+#
+# # Initialize Tensorboard
+# exp_name = "Exp1"
+# exp_id = '{}_{}'.format(exp_name, datetime.now().strftime('%d_%m_%Y-%H_%M_%S'))
+# writer = SummaryWriter('runs/{}'.format(exp_id))
 
-# Initialize Tensorboard
-exp_name = "Exp1"
-exp_id = '{}_{}'.format(exp_name, datetime.now().strftime('%d_%m_%Y-%H_%M_%S'))
-writer = SummaryWriter('runs/{}'.format(exp_id))
-
-
-# Train the model
-train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
-      optimizer=optimizer, dataloader=dataloader, exp_id=exp_id, writer=writer, save_freq=30)
+#
+# # Train the model
+# train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
+#       optimizer=optimizer, dataloader=dataloader, exp_id=exp_id, writer=writer, save_freq=30)
