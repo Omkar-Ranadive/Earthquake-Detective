@@ -1,0 +1,142 @@
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+'model_Exp1_13_08_2020-14_20_46_90.pt'
+
+Confusion Matrix:
+[[747   0   6]
+ [397   0  85]
+ [ 12   0  27]]
+Accuracy: 0.6075353218210361
+
+
+-> Is able to detect tremors but cannot understand noise 
+# Hyper parameters
+num_epochs = 100
+batch_size = 500
+learning_rate = 1e-4
+# Structure: 
+self.conv1 = nn.Conv1d(3, 6, kernel_size=50, stride=2)
+self.pool1 = nn.MaxPool1d(kernel_size=30)
+self.conv2 = nn.Conv1d(6, 8, kernel_size=50, stride=2)
+self.pool2 = nn.MaxPool1d(kernel_size=3)
+self.fc1 = nn.Linear(376, 128)
+self.fc2 = nn.Linear(128, 3)
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+'model_Exp1_13_08_2020-14_41_17_90.pt'
+
+Confusion Matrix:
+[[202 551   0]
+ [110 372   0]
+ [  3  35   1]]
+Accuracy: 0.4513343799058
+
+-> Is able to detect noise, but also misclassifies lot of earthquake as noise 
+num_epochs = 100
+batch_size = 500
+learning_rate = 1e-4
+
+self.conv1 = nn.Conv1d(3, 6, kernel_size=50, stride=2)
+self.pool1 = nn.MaxPool1d(kernel_size=20)
+self.conv2 = nn.Conv1d(6, 8, kernel_size=25, stride=2)
+self.pool2 = nn.MaxPool1d(kernel_size=3)
+self.fc1 = nn.Linear(632, 128)
+self.fc2 = nn.Linear(128, 3)
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+'model_Exp1_13_08_2020-15_56_24_60.pt'
+
+Went up to 70% accuracy during training 
+
+num_epochs = 100
+batch_size = 500
+learning_rate = 1e-4
+
+Confusion Matrix:
+[[744   9   0]
+ [335  98  49]
+ [  5   3  31]]
+Accuracy: 0.685243328100471
+
+Good separation 
+
+self.conv1 = nn.Conv1d(3, 6, kernel_size=75, stride=2)
+self.pool1 = nn.MaxPool1d(kernel_size=10)
+self.conv2 = nn.Conv1d(6, 8, kernel_size=50, stride=2)
+self.pool2 = nn.MaxPool1d(kernel_size=3)
+self.fc1 = nn.Linear(1264, 128)
+self.fc2 = nn.Linear(128, 3)
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+model_Exp1_24_08_2020-20_45_52_90.pt
+
+self.conv1 = nn.Conv1d(3, 6, kernel_size=75, stride=2)
+self.pool1 = nn.MaxPool1d(kernel_size=10)
+self.conv2 = nn.Conv1d(6, 8, kernel_size=50, stride=2)
+self.pool2 = nn.MaxPool1d(kernel_size=3)
+self.fc1 = nn.Linear(1264, 128)
+self.fc2 = nn.Linear(128, 3)
+
+Using new trimmed tremor data 
+
+Confusion Matrix:
+[[374 379   0]
+ [113 369   0]
+ [  3   3  36]]
+Accuracy: 0.6100234925606891
+
+Better at separating tremors. This time, between Earthquake and Noise it did a better job of separating noise than earthquake. 
+So it gets biased towards one of them. 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+model_Exp1_25_08_2020-15_04_46_90.pt
+
+num_epochs = 100
+batch_size = 500
+learning_rate = 1e-4
+
+
+self.conv1 = nn.Conv1d(3, 6, kernel_size=75, stride=2)
+self.pool1 = nn.MaxPool1d(kernel_size=10)
+self.conv2 = nn.Conv1d(6, 8, kernel_size=50, stride=2)
+self.pool2 = nn.MaxPool1d(kernel_size=3)
+self.fc1 = nn.Linear(1264, 128)
+self.fc2 = nn.Linear(128, 3)
+
+
+Averaging samples of earthquake data to len = 20000 
+
+Confusion Matrix:
+[[473 280   0]
+ [157 317   8]
+ [  3   9  30]]
+Accuracy: 0.6421299921691465
+
+-> Accurary and loss were not stagnating - so could be trained more 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+model_Exp1_25_08_2020-15_39_43_30.pt
+
+Training accuracy went upto 79% 
+This model was initialized with weights of model_Exp1_25_08_2020-15_04_46_90.pt
+
+Confusion Matrix:
+[[725  28   0]
+ [239 238   5]
+ [  3   0  39]]
+Accuracy: 0.7846515270164448
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Other notes: Doesn't work well at all (accuracy <= 20% if kernel size is small)
+
+
+
+
+
+
+
+

@@ -38,7 +38,13 @@ conda install cartopy
 * constants.py - Contains constants used throughout the project  
 
 ### src/ml 
-[TBD]
+* dataset.py - Contains Pytorch dataset class to load and pre-process data so that it can be used by Pytorch dataloader 
+* models.py - Contains code for different ML models used 
+* trainer.py - A generic code to train/test different models defined in models.py 
+* wavelet.py - Contains function to perform wavelet scattering transform 
+
+### src/experiments 
+Contains various experiments performed. View experiment files for more details. 
 
 ## To-do list 
 - [X]  Re-write the data processing functions - Downloading raw data, processing it and 

@@ -1,5 +1,6 @@
 from collections import defaultdict
-
+import pickle
+from constants import DATA_PATH
 
 def clean_event_id(event_id):
     """
@@ -38,9 +39,10 @@ def generate_file_name_from_labels(file_name):
             if len(info) == 5:
                 event_id, network, station, channel, label = info
             else:
-                # Label = Unclear event. Space makes it length 6
-                label = "_".join(info[-2: ])
-                event_id, network, station, channel = info[:-2]
+                continue
+                # # Label = Unclear event. Space makes it length 6
+                # label = "_".join(info[-2: ])
+                # event_id, network, station, channel = info[:-2]
 
             # Clean the event id
             event_id = clean_event_id(event_id)
@@ -79,3 +81,30 @@ def convert_to_seconds(val, t):
         result = val
 
     return result
+
+
+def save_file(file, filename):
+    """
+    Save file in pickle format
+    Args:
+        file (any object): Can be any Python object. We would normally use this to save the
+        processed Pytorch dataset
+        filename (str): Name of the file
+    """
+    with open(DATA_PATH / filename, 'wb') as f:
+        pickle.dump(file, f)
+
+
+def load_file(filename):
+    """
+    Load a pickle file
+    Args:
+        filename (str): Name of the file
+
+    Returns (Python obj): Returns the loaded pickle file
+
+    """
+    with open(DATA_PATH / filename, 'rb') as f:
+        file = pickle.load(f)
+
+    return file

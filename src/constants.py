@@ -13,8 +13,9 @@ SAVE_PATH = PARENT_PATH / 'ml/checkpoints'
 # Training labels
 label_dict = {'Earthquake': 0,
               'Noise': 1,
-              'Unclear_Event': 2,
-              'Tremor': 3}
+              'Tremor': 2,
+              'Unclear_Event': 3,
+              }
 
-folder_labels = {'positive': 0,
-                 'negative': 1}
+folder_labels = {'earthquake': {'positive': 0, 'negative': 1},
+                 'tremor': {'positive': 2, 'negative': 1}}

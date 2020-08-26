@@ -1,4 +1,4 @@
-from obspy.clients.fdsn import Client
+from obspy.clients.fdsn import Client, RoutingClient
 from obspy import UTCDateTime, Inventory, Stream
 from obspy.clients.fdsn.header import FDSNException
 from obspy.geodetics.base import gps2dist_azimuth
@@ -10,7 +10,6 @@ import constants
 from scipy.io import wavfile
 import numpy as np
 from utils import clean_event_id
-
 # This parameter will prevent matplotlib from throwing errors for plots with large data points
 mpl.rcParams['agg.path.chunksize'] = 10000
 
@@ -131,6 +130,45 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         if gen_audio:
             generate_audio(event_id=event_id, st=st, origin=origin, inv=inv,
                            sampling_rate=sampling_rate)
+
+
+def download_data_direct(event_id, stations, min_magnitude=2.5, event_client="SCEDC",
+                         event_et=2000,
+                  process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True):
+    """
+    Download data directly given the information. Use this function to download data from the
+    catalog directly. I.E We aren't searching for local earthquakes corresponding to a large
+    earthquake.
+    Args:
+      event_id: Ideally should be time stamp YYYY-MM-DDTHH:MM:SS.000
+      stations (list of lists):  Each entry of the list is a list of form [network, station,
+                                 location, channel]
+      min_magnitude (float): Events >= min_magnitude will be retrieved
+      event_client (str): Client to use for retrieving events
+      event_et (int): Specifies how long the event range should be from start time (in seconds)
+      process_d (bool): If true, the raw data is also processed
+      sampling_rate (int): Sampling rate in Hz
+      gen_plot (bool): If true, plots are generated
+      gen_audio (bool): If true, audio is generated from the waveforms
+
+    """
+
+    # NOTE: Incomplete function - do not use
+    client = Client(event_client)
+    # client = RoutingClient("iris-federator")
+    utc = UTCDateTime(event_id)
+    print("UTC: ", utc)
+    starttime = utc - 100
+    st = Stream()
+
+    for net, sta, loc, cha in stations:
+        try:
+            st += client.get_waveforms(network=net, station=sta, location=loc,
+                                         channel=cha, starttime=starttime, endtime=starttime + event_et)
+        except FDSNException:
+            print("Failed to download inventory information {} {}".format(net, sta))
+
+    return st
 
 
 def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_level=100):

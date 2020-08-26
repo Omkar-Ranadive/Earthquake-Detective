@@ -6,3 +6,5 @@ python-magic
 libmagic
 tensorboard
 h5py
+scikit-learn
+kymatio

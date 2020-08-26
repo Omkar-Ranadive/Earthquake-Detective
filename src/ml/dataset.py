@@ -5,13 +5,29 @@ from constants import DATA_PATH, label_dict, folder_labels
 from obspy import read
 import os
 import warnings
+from kymatio.numpy import Scattering1D
 
 
 class QuakeDataSet(Dataset):
-    def __init__(self, ld_files, ld_folders, excerpt_len, mode='train'):
+    def __init__(self, ld_files, ld_folders, excerpt_len, transforms=[], mode='train'):
+        """
+        Args:
+            ld_files (list): A list of dictionaries where the dictionary contains parameters for
+                            _load_data func
+            ld_folders (list): List of dictionaries where each dictionary contains parameters
+                            for _load_data_from_folder func
+            excerpt_len (int): Length of each trace in final training data. Each signal will be
+                                padded/trimmed to this len.
+            transforms (list): A list of strings listing transforms to apply.
+                               Supported transforms:
+                               'wavelet' - Applies wavelet scattering transform
+            mode (str): mode can be 'train' or any other str. For train, random offset sampling
+                        is performed.
+        """
         self.X, self.Y, self.X_names = [], [], []
         self.excerpt_len = excerpt_len
         self.mode = mode
+        self.transforms = transforms
 
         if ld_files is not None:
             for ld_file in ld_files:
@@ -29,6 +45,20 @@ class QuakeDataSet(Dataset):
         # Convert to numpy
         self.Y = np.array(self.Y, dtype='int64')
 
+        # Print info on class distribution
+        print("Total training examples: {}".format(len(self.Y)))
+        print("-------------------------------------------")
+        print("Class distribution: ")
+        for k, v in label_dict.items():
+            print("Number of {} examples: {}".format(k, np.count_nonzero(self.Y == v)))
+        print("-------------------------------------------")
+
+        # Initialize the transforms
+        # Note: This is too slow to perform dynamically; for now don't use inside dataset class.
+        for transform in self.transforms:
+            if transform == 'wavelet':
+                self.scattering = Scattering1D(J=6, Q=16, shape=self.excerpt_len)
+
     def __getitem__(self, item):
 
         # Pad the data to fixed excerpt length
@@ -38,7 +68,15 @@ class QuakeDataSet(Dataset):
             transformed_data = self._pad_data(feature)
             t_item.append(transformed_data)
 
-        return {'data': np.array(t_item), 'label': self.Y[item]}
+        t_item = np.array(t_item, dtype='float32')
+
+        # Apply any specified transforms - Currently only supports wavelet transform
+        # Note: Too slow, so avoid using inside dataset class
+        for transform in self.transforms:
+            if transform == 'wavelet':
+                t_item = self.scattering(t_item)
+
+        return {'data': t_item, 'label': self.Y[item]}
 
     def __len__(self):
         return len(self.X)
@@ -62,7 +100,42 @@ class QuakeDataSet(Dataset):
         return data
 
     @staticmethod
-    def _load_data(file_name, training_folder, folder_type="trimmed_data"):
+    def _downsample_data(st, desired_rate=20.0):
+        # Calculate decimating factor from desired rate and current sampling rate
+        cur_rate = st[0].stats.sampling_rate
+        assert cur_rate >= desired_rate, "Error: Current sampling rate is lower than desired rate"
+        factor = int(cur_rate / desired_rate)
+        st.decimate(factor=factor)
+
+        return st
+
+    @staticmethod
+    def _resample_data(st, desired_rate=20.0):
+        # Set no filter to False to perform automatic anti aliasing
+        st.resample(sampling_rate=desired_rate, no_filter=False)
+
+        return st
+
+    def _avg_data(self, arr):
+        """
+        Average out n consecutive data points to get fewer samples while still retaining info
+        Args:
+            arr (numpy array): Numpy array containing the seismic data
+
+        Returns (numpy array): Averaged out numpy array of length = excerpt len
+
+        """
+
+        num_of_samples = arr.shape[0]
+        factor = int(num_of_samples / self.excerpt_len)
+
+        assert num_of_samples % self.excerpt_len == 0, "Error: Number of samples not perfectly " \
+                                                       "divisible"
+        arr = np.mean(arr.reshape(-1, factor), axis=1)
+
+        return arr
+
+    def _load_data(self, file_name, training_folder, folder_type="trimmed_data", avg=False):
         """
         Function to load data from text file
         Args:
@@ -71,6 +144,7 @@ class QuakeDataSet(Dataset):
             training_folder (str): Folder name which contains the actual training data
             folder_type (str): Specify what kind of data to load (processed_data, raw_data, audio,
                                plots). Default = trimmed_data
+            avg (bool): If set to true, data is averaged to len = excerpt len
 
         Returns (np arrays): Two arrays X and Y where X = training data, Y = training labels and
                             X_names = file name associated with the data in X
@@ -98,6 +172,17 @@ class QuakeDataSet(Dataset):
                     st1 = read(file_path_z)
                     st2 = read(file_path_e)
                     st3 = read(file_path_n)
+
+                    # Re-sample the data
+                    st1 = self._resample_data(st1)
+                    st2 = self._resample_data(st2)
+                    st3 = self._resample_data(st3)
+
+                    if avg and label_dict[file[1]] == 0:
+                        st1[0].data = self._avg_data(st1[0].data)
+                        st2[0].data = self._avg_data(st2[0].data)
+                        st3[0].data = self._avg_data(st3[0].data)
+
                     X.append([st1[0].data, st2[0].data, st3[0].data])
                     X_names.append(file[0])
                     Y.append(label_dict[file[1]])
@@ -107,8 +192,7 @@ class QuakeDataSet(Dataset):
 
         return X, Y, X_names
 
-    @staticmethod
-    def _load_data_from_folder(training_folder, folder_type):
+    def _load_data_from_folder(self, training_folder, folder_type, data_type):
         """
         Function to load data directly from folder.
         Assumes the following folder structure:
@@ -124,6 +208,7 @@ class QuakeDataSet(Dataset):
         Args:
             training_folder (str): Name of parent training folder
             folder_type (str): Type of examples to load (i.e positive, negative etc)
+            data_type (str): Can be 'earthquake' or 'tremor'
 
        Returns (np arrays): Two arrays X and Y where X = training data, Y = training labels and
                             X_names = file name associated with the data in X
@@ -144,7 +229,8 @@ class QuakeDataSet(Dataset):
                             if '.SAC' in file or '.sac' in file:
                                 # Remove component info (BHE,BHZ etc) and ".sac" before appending
                                 # File names are assumed to be name_BH{}.sac
-                                files.append(file[:-7])  # Hence remove last 7 chars
+                                if file[:2] != '._':   # To avoid meta files in tremor dataset
+                                    files.append(file[:-7])  # Hence remove last 7 chars
 
                         # Now, load three component data for each unique file name
                         for file in files:
@@ -158,8 +244,14 @@ class QuakeDataSet(Dataset):
                                 st1 = read(file_path_z)
                                 st2 = read(file_path_e)
                                 st3 = read(file_path_n)
+
+                                # Re-sample the data
+                                st1 = self._resample_data(st1)
+                                st2 = self._resample_data(st2)
+                                st3 = self._resample_data(st3)
+
                                 X.append([st1[0].data, st2[0].data, st3[0].data])
                                 X_names.append(file)
-                                Y.append(folder_labels[folder_type])
+                                Y.append(folder_labels[data_type][folder_type])
 
         return X, Y, X_names
