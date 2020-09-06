@@ -61,8 +61,9 @@ if __name__ == '__main__':
     """
     # # Specify the download settings
     event_date = "2010_02_27"
-    event_time = "T06_34_13.000"
+    event_time = "T06_34_13.00"
     event_id = event_date + event_time
+
     # event_et = convert_to_seconds(3600, t='s')
     # stations = [['AK', 'SAW', '', 'BHZ,BHN,BHE']]
     # min_mag = 7
@@ -75,13 +76,17 @@ if __name__ == '__main__':
     #                          min_magnitude=min_mag)
 
     """
-    Download data for golden set 
+    Download data for golden set (or from any text file) 
+    Refer to extract_info_zooniverse function in utils.py 
     """
     # event_info = load_info_from_labels(path='../data/V_golden.txt')
     #
-    # for event_id, stations in event_info.items():
-    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-    #                              min_magnitude=7)
+
+    event_info = load_info_from_labels(path='../data/classification_data.txt')
+
+    for event_id, stations in event_info.items():
+        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+                                 min_magnitude=7)
 
     """
     Download data from catalog files 

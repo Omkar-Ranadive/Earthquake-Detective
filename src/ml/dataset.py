@@ -81,6 +81,38 @@ class QuakeDataSet(Dataset):
     def __len__(self):
         return len(self.X)
 
+    def get_indices_split(self, train_percent):
+        """
+        Function to return train_indices and test_indices. This can be used to break this dataset
+        into train and test sets. Indices splits are calculated in proportion to the class
+        distribution.
+
+        Args:
+            train_percent (float): Percentage of samples to include in the training set
+
+        Returns (list): Training indices and testing indices
+        """
+
+        total_samples = self.Y.shape[0]
+        num_train = int(train_percent * total_samples)
+        num_test = total_samples - num_train
+        train_indices = []
+        test_indices = []
+
+        # Get indices for all classes
+        for k, v in label_dict.items():
+            indices = np.where(self.Y == v)[0]
+            # Shuffle the indices
+            np.random.shuffle(indices)
+            # Find what percentage of the total samples are k
+            percent_of_total = len(indices)/total_samples
+            # Include the same percentage in test set
+            num_in_test = int(percent_of_total * num_test)
+            test_indices.extend(indices[:num_in_test])
+            train_indices.extend(indices[num_in_test:])
+
+        return train_indices, test_indices
+
     def _pad_data(self, x):
         length = x.shape[-1]
 

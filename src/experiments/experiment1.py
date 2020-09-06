@@ -63,8 +63,8 @@ test_mod = True
 # Train the model
 if train_mod:
     train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
-          optimizer=optimizer, dataloader=dataloader, exp_id=exp_id, writer=writer, save_freq=30,
-          print_freq=20, val_freq=20)
+          optimizer=optimizer, train_set=dataloader, exp_id=exp_id, writer=writer, save_freq=30,
+          print_freq=20, test_freq=20)
 
 # Test the model
 if test_mod:
@@ -72,5 +72,5 @@ if test_mod:
     model.load_state_dict(torch.load(SAVE_PATH / model_name))
     model.eval()
     dataloader = torch.utils.data.DataLoader(ds, batch_size=len(ds), shuffle=True)
-    test(model, dataloader=dataloader)
+    test(model, test_set=dataloader, loss_func=loss_func)
 

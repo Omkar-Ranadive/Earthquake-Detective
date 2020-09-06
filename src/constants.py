@@ -19,3 +19,6 @@ label_dict = {'Earthquake': 0,
 
 folder_labels = {'earthquake': {'positive': 0, 'negative': 1},
                  'tremor': {'positive': 2, 'negative': 1}}
+
+# Number of classes (Currently, only considering Earthquake, Noise and Tremor)
+n_classes = 3

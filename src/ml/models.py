@@ -47,12 +47,12 @@ class WavNet(nn.Module):
     def __init__(self):
         super(WavNet, self).__init__()
 
-        self.pool1 = nn.MaxPool1d(kernel_size=20)
-        self.fc1 = nn.Linear(17277, 2048)
-        self.fc2 = nn.Linear(2048, 3)
+        # self.pool1 = nn.MaxPool1d(kernel_size=20)
+        self.fc1 = nn.Linear(2361, 128)
+        self.fc2 = nn.Linear(128, 3)
 
     def forward(self, x):
-        x = self.pool1(x)
+        # x = self.pool1(x)
         x = x.view(-1, self.flatten_features(x))
         x = F.relu(self.fc1(x))
         x = F.softmax(self.fc2(x), dim=1)
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
     # Use the following code to understand the changing dimensions after applying each layer
     batch, features, excerpt = 500, 3, 20000
-    dummy_x = torch.rand((5, 3, 115184))
+    dummy_x = torch.rand((50, 3, 787))
 
     ''' For simple Feature Extractor Net '''
     # model = FeatureExtractor()
