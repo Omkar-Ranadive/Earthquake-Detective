@@ -40,9 +40,12 @@ def train(num_epochs,
     for epoch in range(num_epochs):
         total_loss = []
         accuracies = []
-        test_accuracies = []
         for index, data in enumerate(train_set):
-            batch_in = data['data'].to(device)
+            # Move data to device individually if data consists of multi sub-data components
+            if isinstance(data['data'], list):
+                batch_in = [d.to(device) for d in data['data']]
+            else:
+                batch_in = data['data'].to(device)
             batch_out = data['label'].to(device)
             output = model(batch_in)
 
@@ -77,7 +80,7 @@ def train(num_epochs,
             writer.add_scalar('Avg Acc', np.mean(accuracies), epoch)
 
         # Save the model
-        if save_freq is not None and epoch % save_freq == 0:
+        if save_freq is not None and epoch % save_freq == 0 or (epoch == num_epochs-1):
             model_name = "model_{}_{}.pt".format(exp_id, epoch)
             torch.save(model.state_dict(), str(SAVE_PATH / model_name))
 
@@ -94,7 +97,11 @@ def test(model, test_set, loss_func):
     total_loss = []
     with torch.no_grad():
         for index, data in enumerate(test_set):
-            batch_in = data['data'].to(device)
+            if isinstance(data['data'], list):
+                batch_in = [d.to(device) for d in data['data']]
+            else:
+                batch_in = data['data'].to(device)
+
             batch_out = data['label'].to(device)
             output = model(batch_in)
 
@@ -107,7 +114,7 @@ def test(model, test_set, loss_func):
             correct_count = torch.sum(correct_mat).item()
             accuracies.append(correct_count/len(predicted))
             conf_mat = confusion_matrix(y_true=batch_out.cpu().numpy(),
-                                        y_pred=predicted.cpu().numpy())
+                                        y_pred=predicted.cpu().numpy(), labels=range(n_classes))
             combined_mat += conf_mat
 
     return combined_mat, np.mean(accuracies), np.mean(total_loss)

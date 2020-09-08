@@ -1,6 +1,7 @@
 from kymatio.torch import Scattering1D
 import torch
 
+
 def scatter_transform(data, excerpt_len, J=8, Q=32, cuda=False):
     """
 
@@ -16,8 +17,6 @@ def scatter_transform(data, excerpt_len, J=8, Q=32, cuda=False):
     Returns (torch tensor): Scattering coefficients of the form (batch, features, x, y)
 
     """
-
-
 
     # Initialize the scattering transform
     scattering = Scattering1D(J=J, Q=Q, shape=excerpt_len)
