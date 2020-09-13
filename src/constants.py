@@ -9,6 +9,7 @@ from pathlib import Path
 PARENT_PATH = Path(__file__).parent
 DATA_PATH = PARENT_PATH / '../data'
 SAVE_PATH = PARENT_PATH / 'ml/checkpoints'
+META_PATH = PARENT_PATH / '../meta'
 
 # Training labels
 label_dict = {'Earthquake': 0,

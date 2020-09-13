@@ -1,9 +1,6 @@
 from collections import defaultdict
 import pickle
 from constants import DATA_PATH
-import pandas as pd
-import json
-
 
 def clean_event_id(event_id):
     """
@@ -55,62 +52,6 @@ def generate_file_name_from_labels(file_name):
             file_label_dict[event_id].append([file_name, label])
 
     return file_label_dict
-
-
-def extract_info_zooniverse(subjects, classfications, user_names=['suzanv']):
-    """
-    Extract the time, region, station, channel and classification from .csv files downloaded from
-    Zooniverse. The extracted data is saved in a text file.
-
-    Args:
-        subjects (str): Path to .csv file containing subjects (seismic file) info
-        classifications (str): Path to .csv file containing classifications done by Citizen
-        Scientists.
-        user_names (list): List of user names whose info is to be extracted
-
-    """
-
-    df_sub = pd.read_csv(DATA_PATH / subjects)
-    df_class = pd.read_csv(DATA_PATH / classfications)
-    subject_info = {}
-
-    # Create a mapping of subject_id -> time_stamp region station channel
-    for index, row in df_sub.iterrows():
-        sub_id = row['subject_id']
-        meta = json.loads(row['metadata'])
-        file_name = meta['!image_name'].split('_')
-        '''
-        file_name[0] = Region 
-        file_name[1] = Station code 
-        file_name[2] = location 
-        file_name[3] = channel 
-        file_name[4] = year 
-        file_name[5] = month 
-        file_name[6] = day 
-        file_name[7] = hours 
-        file_name[8] = minutes 
-        file_name[9] = seconds 
-        file_name[10] = timestamp offset 
-        '''
-        # Ensure that the information is extracted only if the structure is correct
-        if len(file_name) >= 11:
-            time_stamp = "-".join(file_name[4:7]) + ":".join(file_name[7:10]) + '.' +\
-                         file_name[10][:3]
-
-            subject_info[sub_id] = [time_stamp, file_name[0], file_name[1], file_name[3]]
-
-    # Filter the classifications based on the user_names list
-    df_filt_class = df_class[df_class.user_name.isin(user_names)]
-
-    with open(DATA_PATH / 'classification_data.txt', 'a') as f:
-        for index, row in df_filt_class.iterrows():
-            meta = json.loads(row['annotations'])
-            sub_id = row['subject_ids']
-
-            if sub_id in subject_info:
-                label = meta[0]['value']
-                info = " ".join((subject_info[sub_id])) + " " + label
-                f.write(info + '\n')
 
 
 def convert_to_seconds(val, t):
@@ -168,8 +109,3 @@ def load_file(filename):
 
     return file
 
-
-if __name__ == '__main__':
-    extract_info_zooniverse(classfications='earthquake-detective-classifications.csv',
-                            subjects='earthquake-detective-subjects.csv',
-                            user_names=['suzanv'])
