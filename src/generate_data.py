@@ -1,7 +1,7 @@
 from utils import convert_to_seconds
 import data_utils
 from collections import defaultdict
-
+from constants import  DATA_PATH
 
 def load_stations(path):
     """
@@ -55,6 +55,17 @@ def load_from_catalog(path):
     return id_stat_dict
 
 
+def load_golden(path):
+    id_stat_dict = defaultdict(list)
+
+    with open(path) as f:
+        for line in f.readlines():
+            info = line.split()
+            id_stat_dict[info[1]].append([info[2], info[3], '', info[4]])
+
+    return id_stat_dict
+
+
 if __name__ == '__main__':
     """
     Uncomment following section to download data manually by specifying event details 
@@ -82,11 +93,11 @@ if __name__ == '__main__':
     # event_info = load_info_from_labels(path='../data/V_golden.txt')
     #
 
-    event_info = load_info_from_labels(path='../data/classification_data.txt')
-
-    for event_id, stations in event_info.items():
-        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-                                 min_magnitude=7)
+    # event_info = load_info_from_labels(path='../data/classification_data.txt')
+    #
+    # for event_id, stations in event_info.items():
+    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+    #                              min_magnitude=7)
 
     """
     Download data from catalog files 
@@ -103,3 +114,12 @@ if __name__ == '__main__':
     # for event_id, stations in event_info.items():
     #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
     #                              min_magnitude=7)
+
+    """
+    Download data for golden set classification 
+    """
+    event_info = load_golden(path=DATA_PATH / 'Golden' / 'golden_to_be_classified.txt')
+
+    for event_id, stations in event_info.items():
+        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+                                 min_magnitude=7, folder_name="Golden_Samples")

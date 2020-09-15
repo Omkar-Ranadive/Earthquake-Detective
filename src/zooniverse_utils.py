@@ -51,6 +51,61 @@ def get_subject_info(df_sub):
     return subject_info
 
 
+def choose_golden_samples(subjects, classifications, sub_stats, golden_users=['Vivitang',
+                                                                              'suzanv']):
+    """
+    Args:
+      subjects (str): Path to .csv file containing subjects (seismic file) info
+      classifications (str): Path to .csv file containing classifications done by Citizen
+      Scientists.
+      sub_stats (str): Path to .txt file containing subject statistics (meta data on data samples)
+      golden_users (list): List of users who will be used to score other users
+    """
+
+    df_sub = pd.read_csv(DATA_PATH / subjects)
+    subject_info = get_subject_info(df_sub)
+    df_class = pd.read_csv(DATA_PATH / classifications)
+    # Filter out rows where users haven't logged in
+    # Filter class to only contain golden users info
+    n_samples = 200  # Number of samples to consider for the golden set
+    df_class = df_class[df_class.user_name.isin(golden_users)]
+    golden_ids = []
+
+    with open(META_PATH / sub_stats, 'r') as f:
+        counter = 0
+        for line in f.readlines():
+            info = line.split(" ")
+            # Don't consider practice samples, hence len(line) > 4
+            if len(info) > 4 and counter < n_samples:
+                golden_ids.append(info[0])
+                counter += 1
+
+    print("Total golden samples: ", len(golden_ids))
+    # From the set of golden ids, find if they are already classified by the golden users
+    df_done = df_class[df_class.subject_ids.isin(golden_ids)]
+    print("Golden samples already classified by golden users: ", len(df_done))
+    remaining_ids = set(map(int, golden_ids)) - set(df_done['subject_ids'])
+    print("Golden samples left to be classified by golden users: ", len(remaining_ids))
+
+    # For the golden samples which are already classified, create a text file with sub_info labels
+    with open(DATA_PATH / 'Golden' / 'golden_classified.txt', 'w') as f:
+        for index, row in df_done.iterrows():
+            meta = json.loads(row['annotations'])
+            sub_id = row['subject_ids']
+
+            if sub_id in subject_info:
+                label = meta[0]['value']
+                info = str(sub_id) + " " + " ".join(subject_info[sub_id]) + " " + label
+                f.write(info + '\n')
+
+    # For the rest, create a file with without the labels
+    with open(DATA_PATH / 'Golden' / 'golden_to_be_classified.txt', 'w') as f:
+        for sub_id in remaining_ids:
+            if sub_id in subject_info:
+                info = str(sub_id) + " " + " ".join(subject_info[sub_id])
+                f.write(info + '\n')
+
+
 def generate_stats(subjects, classifications):
     """
     Generate various statistics from the Zooniverse data. Data is saved in meta folder.
@@ -196,13 +251,18 @@ def compare_classifications(subjects, classifications, user_names):
 
 
 if __name__ == '__main__':
-     # extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
-     #                        subjects='earthquake-detective-subjects.csv',
-     #                        user_names=['ElisabethB'])
+    # extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
+    #                        subjects='earthquake-detective-subjects.csv',
+    #                        user_names=['ElisabethB'])
 
     # compare_classifications(subjects='earthquake-detective-subjects.csv',
     #                         classifications='earthquake-detective-classifications.csv',
     #                         user_names=['Vivitang', 'suzanv'])
     #
-    generate_stats(subjects='earthquake-detective-subjects.csv',
-                             classifications='earthquake-detective-classifications.csv')
+
+    # generate_stats(subjects='earthquake-detective-subjects.csv',
+    #                          classifications='earthquake-detective-classifications.csv')
+
+    choose_golden_samples(subjects='earthquake-detective-subjects.csv',
+                             classifications='earthquake-detective-classifications.csv',
+                            sub_stats='stats_subs12_09_2020-20_10_24.txt')

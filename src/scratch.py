@@ -10,3 +10,7 @@
 #     print("----")
 #     print(data_y[0])
 
+a = [1, 2, 3, 6, 8]
+b = [2, 3]
+
+print(set(a) - set(b))

@@ -14,10 +14,11 @@ from utils import clean_event_id
 mpl.rcParams['agg.path.chunksize'] = 10000
 
 
-def create_folders(event_id):
+def create_folders(event_id, folder_name="default_folder"):
     """
     Args:
         event_id (str): Ideally should be time stamp YYYY-MM-DDTHH:MM:SS.000
+        folder_name (str): Name of the folder in which the data gets saved
 
     Returns:
         folder_path (Path obj): Returns folder path so that other functions can save in correct
@@ -28,8 +29,10 @@ def create_folders(event_id):
     event_id = clean_event_id(event_id)
 
     # Create the required folders
-    folder_path = constants.DATA_PATH / event_id
+    if not os.path.exists(constants.DATA_PATH / folder_name):
+        os.mkdir(constants.DATA_PATH / folder_name)
 
+    folder_path = constants.DATA_PATH / folder_name / event_id
     if not os.path.exists(folder_path):
         os.mkdir(folder_path)
     if not os.path.exists(folder_path / 'raw_data'):
@@ -48,7 +51,8 @@ def create_folders(event_id):
 
 def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
                   event_et=3600, stat_client="IRIS",
-                  process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True):
+                  process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True,
+                  folder_name="default_folder"):
     """
     Download and save the raw data
     Args:
@@ -63,10 +67,11 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         sampling_rate (int): Sampling rate in Hz
         gen_plot (bool): If true, plots are generated
         gen_audio (bool): If true, audio is generated from the waveforms
+        folder_name (str): Name of the folder in which the data gets saved
 
     """
     # Make sure the folders are created
-    folder_path = create_folders(event_id)
+    folder_path = create_folders(event_id, folder_name=folder_name)
 
     # Download event information with mag >= min_magnitude
     e_client = Client(event_client)
@@ -121,15 +126,16 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
 
         # Process the seismograms if process_d flag = True
         if process_d:
-            st = process_data(event_id=event_id, st=st, sampling_rate=sampling_rate)
+            st = process_data(event_id=event_id, st=st, sampling_rate=sampling_rate,
+                              folder_name=folder_name)
 
         if gen_plot:
             generate_plots(event_id=event_id, st=st, origin=origin, inv=inv,
-                           sampling_rate=sampling_rate)
+                           sampling_rate=sampling_rate,  folder_name=folder_name)
 
         if gen_audio:
             generate_audio(event_id=event_id, st=st, origin=origin, inv=inv,
-                           sampling_rate=sampling_rate)
+                           sampling_rate=sampling_rate,  folder_name=folder_name)
 
 
 def download_data_direct(event_id, stations, min_magnitude=2.5, event_client="SCEDC",
@@ -171,7 +177,8 @@ def download_data_direct(event_id, stations, min_magnitude=2.5, event_client="SC
     return st
 
 
-def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_level=100):
+def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_level=100,
+                 folder_name="default_folder"):
     """
     Function to process the raw data stream
     Args:
@@ -180,13 +187,15 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
         sampling_rate (float): Sampling rate in Hertz
         pre_filt (tuple): Four corner frequencies for applying bandpass filter
         water_level (int): Water level for de-convolution
+        folder_name (str): Name of the folder in which the data gets saved
+
 
     Returns:
         st (Obspy Stream obj): Returns the processed stream object
     """
 
     # Make sure the right folders are created
-    folder_path = create_folders(event_id)
+    folder_path = create_folders(event_id,  folder_name=folder_name)
 
     # Re-sample and de-trend the stream data
     st.resample(sampling_rate=sampling_rate, window='hanning', no_filter=True, strict_length=False)
@@ -211,7 +220,8 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
     return st
 
 
-def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0):
+def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
+                   folder_name="default_folder"):
     """
     Generate trimmed plots of the seismograms
     Args:
@@ -224,10 +234,10 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                            surface waves)
         surface_len (float): Surface window length in seconds which determines how long the
                              trimmed trace will be
-
+        folder_name (str): Name of the folder in which the data gets saved
     """
     # Make sure the right folders are created
-    folder_path = create_folders(event_id)
+    folder_path = create_folders(event_id,  folder_name=folder_name)
 
     # Trim Seismograms
     for tr in st:
@@ -300,7 +310,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
 
 def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
-                   speed=400, damping=2e-8):
+                   speed=400, damping=2e-8, folder_name="default_folder"):
     """
     Convert waveforms to audible sounds
     Args:
@@ -318,10 +328,10 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                     "medium" speed rate
         damping (float): Amount by which to damp the sound. If damping is larger,
                         audio amplitude will be smaller. If lower, amplitude will be larger.
-
+        folder_name (str): Name of the folder in which the data gets saved
     """
     # Make sure folders are created
-    folder_path = create_folders(event_id)
+    folder_path = create_folders(event_id,  folder_name=folder_name)
 
     # Apply band-pass filter to data stream
     st.filter('bandpass', freqmin=2.0, freqmax=8.0, zerophase=True)
