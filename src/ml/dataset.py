@@ -24,23 +24,29 @@ class QuakeDataSet(Dataset):
             mode (str): mode can be 'train' or any other str. For train, random offset sampling
                         is performed.
         """
-        self.X, self.Y, self.X_names = [], [], []
+        self.X, self.Y, self.X_names, self.X_users, self.X_ids = [], [], [], [], []
         self.excerpt_len = excerpt_len
         self.mode = mode
         self.transforms = transforms
 
         if ld_files is not None:
             for ld_file in ld_files:
-                x, y, x_names = self._load_data(**ld_file)
+                x, y, x_names, x_ids, x_users = self._load_data(**ld_file)
                 self.X.extend(x)
                 self.Y.extend(y)
                 self.X_names.extend(x_names)
+                self.X_ids.extend(x_ids)
+                self.X_users.extend(x_users)
         if ld_folders is not None:
             for ld_folder in ld_folders:
                 x, y, x_names = self._load_data_from_folder(**ld_folder)
                 self.X.extend(x)
                 self.Y.extend(y)
                 self.X_names.extend(x_names)
+                # In case of folders, we don't keep track of subject ids / users
+                # As folders are different data sources (not from Zooniverse)
+                self.X_ids.extend(len(y)*[-1])
+                self.X_users.extend(len(y)*[-1])
 
         # Convert to numpy
         self.Y = np.array(self.Y, dtype='int64')
@@ -75,8 +81,8 @@ class QuakeDataSet(Dataset):
         for transform in self.transforms:
             if transform == 'wavelet':
                 t_item = self.scattering(t_item)
-
-        return {'data': t_item, 'label': self.Y[item]}
+        return {'data': t_item, 'label': self.Y[item], 'sub_id': self.X_ids[item],
+                'user': self.X_users[item]}
 
     def __len__(self):
         return len(self.X)
@@ -183,13 +189,13 @@ class QuakeDataSet(Dataset):
 
         """
         fl_map = generate_file_name_from_labels(file_name)
-        X, Y, X_names = [], [], []
+        X, Y, X_names, X_ids, X_users = [], [], [], [], []
         train_path = DATA_PATH / training_folder
 
         for folder, files in fl_map.items():
             folder_path = train_path / folder / folder_type
             for file in files:
-                # File is a list of following form = [file_name, label]
+                # File is a list of following form = [file_name, label, sub_id, user]
                 # Also, load the BHE and BHN components along with the Z component
                 # NOTE: Its assumed that the labelled data only contains BHZ components. We are
                 # assuming the labels of other components to be the same
@@ -217,12 +223,15 @@ class QuakeDataSet(Dataset):
 
                     X.append([st1[0].data, st2[0].data, st3[0].data])
                     X_names.append(file[0])
+                    X_ids.append(file[2])
+                    X_users.append(file[3])
                     Y.append(label_dict[file[1]])
+
                 else:
                     # Warn users if some file is not found
                     warnings.warn("File not found: {}".format(file[0]))
 
-        return X, Y, X_names
+        return X, Y, X_names, X_ids, X_users
 
     def _load_data_from_folder(self, training_folder, folder_type, data_type):
         """

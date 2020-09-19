@@ -161,7 +161,7 @@ def generate_stats(subjects, classifications):
             counter))
 
 
-def extract_info_zooniverse(subjects, classifications, user_names=['suzanv']):
+def extract_info_zooniverse(subjects, classifications, user_names=['suzanv'], regions=[]):
     """
     Extract the time, region, station, channel and classification from .csv files downloaded from
     Zooniverse. The extracted data is saved in a text file.
@@ -174,7 +174,7 @@ def extract_info_zooniverse(subjects, classifications, user_names=['suzanv']):
         classifications (str): Path to .csv file containing classifications done by Citizen
         Scientists.
         user_names (list): List of user names whose info is to be extracted
-
+        regions (list): If not empty, only info from the specified regions will be saved to file
     """
 
     df_sub = pd.read_csv(DATA_PATH / subjects)
@@ -185,19 +185,30 @@ def extract_info_zooniverse(subjects, classifications, user_names=['suzanv']):
 
     # Filter the classifications based on the user_names list
     df_filt_class = df_class[df_class.user_name.isin(user_names)]
+    # Drop duplicate subject_ids
+    df_filt_class = df_filt_class.drop_duplicates(subset=['subject_ids'], keep='first')
 
-    #
+    f_name = 'classification_data_{}.txt'.format("_".join(user_names))
     # Save the content to text file
-    with open(DATA_PATH / 'classification_data.txt', 'a') as f:
+    with open(DATA_PATH / f_name, 'w') as f:
         for index, row in df_filt_class.iterrows():
             meta = json.loads(row['annotations'])
             sub_id = row['subject_ids']
 
             # The len() > 2 constraint ensures we don't save practice problems
             if sub_id in subject_info and len(subject_info[sub_id]) > 2:
-                label = meta[0]['value']
-                info = " ".join((subject_info[sub_id])) + " " + label
-                f.write(info + '\n')
+                if regions:
+                    # Only save if the subject id is part of the regions list
+                    if subject_info[sub_id][1] in regions:
+                        label = meta[0]['value']
+                        info = str(sub_id) + " " + row['user_name'] + " " + " ".join((subject_info[
+                                         sub_id])) + " " + label
+                        f.write(info + '\n')
+                else:
+                    label = meta[0]['value']
+                    info = str(sub_id) + " " + row['user_name'] + " " + " ".join((subject_info[
+                                         sub_id])) + " " + label
+                    f.write(info + '\n')
 
 
 def compare_classifications(subjects, classifications, user_names):
@@ -251,18 +262,18 @@ def compare_classifications(subjects, classifications, user_names):
 
 
 if __name__ == '__main__':
-    # extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
-    #                        subjects='earthquake-detective-subjects.csv',
-    #                        user_names=['ElisabethB'])
+    extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
+                           subjects='earthquake-detective-subjects.csv',
+                           user_names=['Vivitang'])
 
     # compare_classifications(subjects='earthquake-detective-subjects.csv',
     #                         classifications='earthquake-detective-classifications.csv',
     #                         user_names=['Vivitang', 'suzanv'])
-    #
+
 
     # generate_stats(subjects='earthquake-detective-subjects.csv',
     #                          classifications='earthquake-detective-classifications.csv')
 
-    choose_golden_samples(subjects='earthquake-detective-subjects.csv',
-                             classifications='earthquake-detective-classifications.csv',
-                            sub_stats='stats_subs12_09_2020-20_10_24.txt')
+    # choose_golden_samples(subjects='earthquake-detective-subjects.csv',
+    #                          classifications='earthquake-detective-classifications.csv',
+    #                         sub_stats='stats_subs12_09_2020-20_10_24.txt')

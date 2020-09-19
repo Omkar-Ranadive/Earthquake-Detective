@@ -25,7 +25,7 @@ batch_size = 500
 learning_rate = 1e-4
 
 # Load the data as PyTorch tensors
-ld_files = [{'file_name': '../../data/V_golden.txt', 'training_folder': 'Training_Set_Vivian',
+ld_files = [{'file_name': '../../data/V_golden_new.txt', 'training_folder': 'Training_Set_Vivian',
              'folder_type': 'trimmed_data', 'avg': True}]
 
 ld_folders = [{'training_folder': 'Training_Set_Prem', 'folder_type': 'positive',

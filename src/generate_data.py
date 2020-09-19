@@ -1,7 +1,8 @@
 from utils import convert_to_seconds
 import data_utils
 from collections import defaultdict
-from constants import  DATA_PATH
+from constants import DATA_PATH, META_PATH
+
 
 def load_stations(path):
     """
@@ -24,19 +25,29 @@ def load_stations(path):
 def load_info_from_labels(path):
     """
     Function to download data associated with labeled data from Earthquake Detective
-    Assumption: Labels are of the form: Time_stamp network station component label
+    Assumption: Labels are of the form: Sub_Id User_name Time_stamp network station component label
     Args:
         path (str): Path from which to load the labeled data from
 
     Returns: Stations info
     """
     id_stat_dict = defaultdict(list)  # Create a key:val mapping of event_id : stations list
+
+    # Load the list of existing downloaded subject_ids - so that we don't repeat the download
+    files = open(META_PATH / 'downloaded_files.txt', 'r')
+    subject_ids = [sub_id.strip() for sub_id in files.readlines()]
+    counter = 0
     with open(path) as f:
         for line in f.readlines():
             info = line.split()
-            # Separate event id from station info
-            id_stat_dict[info[0]].append([info[1], info[2], "", info[3]+',BHN,BHE'])
+            # For now, don't download the none of the above / unclear event data as it is not
+            # being classified
+            if info[0] not in subject_ids and info[-1] not in ('above', 'Event'):
+                # Separate event id from station info
+                id_stat_dict[info[2]].append([info[3], info[4], "", info[5]+',BHN,BHE'])
+                counter += 1
 
+    print("Number of samples chosen to download: {}".format(counter))
     return id_stat_dict
 
 
@@ -93,11 +104,11 @@ if __name__ == '__main__':
     # event_info = load_info_from_labels(path='../data/V_golden.txt')
     #
 
-    # event_info = load_info_from_labels(path='../data/classification_data.txt')
-    #
-    # for event_id, stations in event_info.items():
-    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-    #                              min_magnitude=7)
+    event_info = load_info_from_labels(path='../data/classification_data_Vivitang.txt')
+
+    for event_id, stations in event_info.items():
+        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+                                 min_magnitude=7, folder_name='Vivian_Set', save_raw=False)
 
     """
     Download data from catalog files 
@@ -116,10 +127,10 @@ if __name__ == '__main__':
     #                              min_magnitude=7)
 
     """
-    Download data for golden set classification 
+    Download data for golden set classification
     """
-    event_info = load_golden(path=DATA_PATH / 'Golden' / 'golden_to_be_classified.txt')
-
-    for event_id, stations in event_info.items():
-        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-                                 min_magnitude=7, folder_name="Golden_Samples")
+    # event_info = load_golden(path=DATA_PATH / 'Golden' / 'golden_to_be_classified.txt')
+    #
+    # for event_id, stations in event_info.items():
+    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+    #                              min_magnitude=7, folder_name="Golden_Samples")

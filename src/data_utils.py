@@ -50,7 +50,7 @@ def create_folders(event_id, folder_name="default_folder"):
 
 
 def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
-                  event_et=3600, stat_client="IRIS",
+                  event_et=3600, stat_client="IRIS", save_raw=True,
                   process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True,
                   folder_name="default_folder"):
     """
@@ -63,6 +63,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         event_client (str): Client to use for retrieving events
         event_et (int): Specifies how long the event range should be from start time (in seconds)
         stat_client (str): Client to use for retrieving waveforms and inventory info
+        save_raw (bool): If true, raw data will also be saved (takes a lot of space)
         process_d (bool): If true, the raw data is also processed
         sampling_rate (int): Sampling rate in Hz
         gen_plot (bool): If true, plots are generated
@@ -118,11 +119,12 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         event_id_new = clean_event_id(event_id)
 
         # Save the files
-        for tr in st:
-            file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                               tr.stats.channel, event_id_new))
-            file_path = raw_path / (file_id + ".sac")
-            tr.write(str(file_path), format='SAC')
+        if save_raw:
+            for tr in st:
+                file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
+                                   tr.stats.channel, event_id_new))
+                file_path = raw_path / (file_id + ".sac")
+                tr.write(str(file_path), format='SAC')
 
         # Process the seismograms if process_d flag = True
         if process_d:

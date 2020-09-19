@@ -2,6 +2,7 @@ from collections import defaultdict
 import pickle
 from constants import DATA_PATH
 
+
 def clean_event_id(event_id):
     """
     Clean the event id by replacing few characters with underscore. Makes it easier to save.
@@ -36,11 +37,11 @@ def generate_file_name_from_labels(file_name):
             location = ""   # Empty location is assumed, change accordingly if required
             info = line.split()
 
-            if len(info) == 5:
-                event_id, network, station, channel, label = info
+            if len(info) == 7:
+                sub_id, user, event_id, network, station, channel, label = info
             else:
                 continue
-                # # Label = Unclear event. Space makes it length 6
+                # # Label = Unclear event. Space makes it length 8
                 # label = "_".join(info[-2: ])
                 # event_id, network, station, channel = info[:-2]
 
@@ -49,7 +50,7 @@ def generate_file_name_from_labels(file_name):
 
             file_name = "_".join((network, station, location, channel, event_id))
 
-            file_label_dict[event_id].append([file_name, label])
+            file_label_dict[event_id].append([file_name, label, sub_id, user])
 
     return file_label_dict
 
@@ -108,4 +109,3 @@ def load_file(filename):
         file = pickle.load(f)
 
     return file
-
