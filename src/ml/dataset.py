@@ -1,11 +1,12 @@
 from torch.utils.data import Dataset
 import numpy as np
 from src.utils import generate_file_name_from_labels
-from constants import DATA_PATH, label_dict, folder_labels
+from constants import META_PATH, DATA_PATH, label_dict, folder_labels
 from obspy import read
 import os
 import warnings
 from kymatio.numpy import Scattering1D
+from ml.retirement.r_utils import map_users_to_index
 
 
 class QuakeDataSet(Dataset):
@@ -28,6 +29,7 @@ class QuakeDataSet(Dataset):
         self.excerpt_len = excerpt_len
         self.mode = mode
         self.transforms = transforms
+        self.user_to_index = map_users_to_index(META_PATH / 'stats_users_12_09_2020-20_10_24.txt')
 
         if ld_files is not None:
             for ld_file in ld_files:
@@ -185,8 +187,8 @@ class QuakeDataSet(Dataset):
             avg (bool): If set to true, data is averaged to len = excerpt len
 
         Returns (np arrays): Two arrays X and Y where X = training data, Y = training labels and
-                            X_names = file name associated with the data in X
-
+                            X_names = file name associated with the data in
+X
         """
         fl_map = generate_file_name_from_labels(file_name)
         X, Y, X_names, X_ids, X_users = [], [], [], [], []
@@ -223,8 +225,8 @@ class QuakeDataSet(Dataset):
 
                     X.append([st1[0].data, st2[0].data, st3[0].data])
                     X_names.append(file[0])
-                    X_ids.append(file[2])
-                    X_users.append(file[3])
+                    X_ids.append(int(file[2]))
+                    X_users.append(self.user_to_index[file[3]])
                     Y.append(label_dict[file[1]])
 
                 else:

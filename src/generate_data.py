@@ -2,7 +2,7 @@ from utils import convert_to_seconds
 import data_utils
 from collections import defaultdict
 from constants import DATA_PATH, META_PATH
-
+from obspy import UTCDateTime
 
 def load_stations(path):
     """
@@ -37,18 +37,21 @@ def load_info_from_labels(path):
     files = open(META_PATH / 'downloaded_files.txt', 'r')
     subject_ids = [sub_id.strip() for sub_id in files.readlines()]
     counter = 0
+    user_data = []
     with open(path) as f:
         for line in f.readlines():
             info = line.split()
             # For now, don't download the none of the above / unclear event data as it is not
             # being classified
-            if info[0] not in subject_ids and info[-1] not in ('above', 'Event'):
+            if info[0] not in subject_ids and info[-1] not in ('above', 'Event') and info[5] == \
+                    'BHZ' and info[-1] == 'Earthquake':
                 # Separate event id from station info
                 id_stat_dict[info[2]].append([info[3], info[4], "", info[5]+',BHN,BHE'])
                 counter += 1
+                user_data.append(info)
 
     print("Number of samples chosen to download: {}".format(counter))
-    return id_stat_dict
+    return id_stat_dict, user_data
 
 
 def load_from_catalog(path):
@@ -64,6 +67,26 @@ def load_from_catalog(path):
                 id_stat_dict[event_id].append(['CI', 'WOR', '', 'BHZ,BHN,BHE'])
 
     return id_stat_dict
+
+
+def get_sub_ids_of_selected_samples(path, id_dict, info):
+    info = sorted(info, key=lambda x: x[2])
+    total = 0
+    start_date = info[0][2]  # Change this if a different range is required
+    end_date = start_date
+
+    for k, v in sorted(id_dict.items()):
+        total += len(v)
+        if total > 2000:
+            end_date = k
+            break
+
+    print("Total", total)
+    for data in info:
+        if UTCDateTime(start_date) <= UTCDateTime(data[2]) <= UTCDateTime(end_date):
+            with open(META_PATH / 'downloaded_files.txt', 'a') as f:
+                f.write(data[0] + '\n')
+                # print(data)
 
 
 def load_golden(path):
@@ -99,16 +122,51 @@ if __name__ == '__main__':
 
     """
     Download data for golden set (or from any text file) 
+    
     Refer to extract_info_zooniverse function in utils.py 
     """
-    # event_info = load_info_from_labels(path='../data/V_golden.txt')
+    # event_info, _ = load_info_from_labels(path='../data/V_golden.txt')
     #
+    #
+    '''
+    Download for Vivian - Golden User 
+    '''
+    # event_info, _ = load_info_from_labels(path='../data/classification_data_Vivitang.txt')
+    #
+    # for event_id, stations in event_info.items():
+    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+    #                              min_magnitude=7, folder_name='Vivian_Set', save_raw=False)
 
-    event_info = load_info_from_labels(path='../data/classification_data_Vivitang.txt')
+    '''
+    Download for Elisabeth - User with huge number of classifications 
+    '''
+    # event_info, user_info = load_info_from_labels(
+    #     path='../data/classification_data_ElisabethB.txt')
+    # Download them 1000 at a time
+    # total = 0
+    # get_sub_ids_of_selected_samples(path='../data/classification_data_ElisabethB.txt',
+    #                                 id_dict=event_info, info=user_info)
+    '''
+    Download for Jeff - Classifies Earthquake with good accuracy - only download earthquake 
+    samples 
+    '''
+    event_info, user_info = load_info_from_labels(
+        path='../data/classification_data_Jeff503.txt')
 
     for event_id, stations in event_info.items():
         data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-                                 min_magnitude=7, folder_name='Vivian_Set', save_raw=False)
+                                 min_magnitude=7, folder_name='Jeff_Set', save_raw=False)
+
+    # for event_id, stations in sorted(event_info.items()):
+    #     total += len(stations)
+    #     # if total >= 1500:
+    #     #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+    #     #                          min_magnitude=7, folder_name='ElisabethB_set', save_raw=False)
+    #     print(event_id, total)
+    #
+    #     if total >= 2000:
+    #         break
+
 
     """
     Download data from catalog files 
