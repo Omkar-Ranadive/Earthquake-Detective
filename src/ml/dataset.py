@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 import numpy as np
-from src.utils import generate_file_name_from_labels
+from utils import generate_file_name_from_labels
 from constants import META_PATH, DATA_PATH, label_dict, folder_labels
 from obspy import read
 import os
@@ -30,6 +30,7 @@ class QuakeDataSet(Dataset):
         self.mode = mode
         self.transforms = transforms
         self.user_to_index = map_users_to_index(META_PATH / 'stats_users_12_09_2020-20_10_24.txt')
+        self.avg = False
 
         if ld_files is not None:
             for ld_file in ld_files:
@@ -52,14 +53,11 @@ class QuakeDataSet(Dataset):
 
         # Convert to numpy
         self.Y = np.array(self.Y, dtype='int64')
+        self.X_ids = np.array(self.X_ids, dtype='int64')
+        self.X_users = np.array(self.X_users, dtype='int64')
 
-        # Print info on class distribution
-        print("Total training examples: {}".format(len(self.Y)))
-        print("-------------------------------------------")
-        print("Class distribution: ")
-        for k, v in label_dict.items():
-            print("Number of {} examples: {}".format(k, np.count_nonzero(self.Y == v)))
-        print("-------------------------------------------")
+        # Print data distribution
+        self.get_distribution()
 
         # Initialize the transforms
         # Note: This is too slow to perform dynamically; for now don't use inside dataset class.
@@ -73,6 +71,8 @@ class QuakeDataSet(Dataset):
         cur_item = self.X[item]
         t_item = []
         for feature in cur_item:
+            if self.avg:
+                feature = self._avg_data(feature)
             transformed_data = self._pad_data(feature)
             t_item.append(transformed_data)
 
@@ -89,7 +89,7 @@ class QuakeDataSet(Dataset):
     def __len__(self):
         return len(self.X)
 
-    def get_indices_split(self, train_percent):
+    def get_indices_split(self, train_percent, seed=False, users=[]):
         """
         Function to return train_indices and test_indices. This can be used to break this dataset
         into train and test sets. Indices splits are calculated in proportion to the class
@@ -97,19 +97,43 @@ class QuakeDataSet(Dataset):
 
         Args:
             train_percent (float): Percentage of samples to include in the training set
+            seed (bool): If true, same indices are produced everything for reproducibility
+            users (list): If only data from specific users is required, it can be specified by
+            giving a list of user names
 
         Returns (list): Training indices and testing indices
         """
 
-        total_samples = self.Y.shape[0]
+        # Filter the data by list of users if specified
+        if users:
+            user_indices = [-1]  # By default, all data from folders represented by user_id =
+            # -1 will be considered
+            for user in users:
+                if user in self.user_to_index:
+                    user_indices.append(self.user_to_index[user])
+            # Get the samples classified by users in user_indices
+            indices_all = []
+            for user_index in user_indices:
+                u_indices = np.where(self.X_users == user_index)[0]
+                indices_all.extend(u_indices)
+            indices_all = np.array(indices_all)
+            total_samples = indices_all.shape[0]
+        else:
+            total_samples = self.Y.shape[0]
+            indices_all = np.array([])
+
         num_train = int(train_percent * total_samples)
         num_test = total_samples - num_train
         train_indices = []
         test_indices = []
-
+        if seed:
+            np.random.seed(0)
         # Get indices for all classes
         for k, v in label_dict.items():
             indices = np.where(self.Y == v)[0]
+            # Select user specific indices, if user names are given
+            if indices_all.size != 0:
+                indices = np.intersect1d(indices, indices_all)
             # Shuffle the indices
             np.random.shuffle(indices)
             # Find what percentage of the total samples are k
@@ -120,6 +144,15 @@ class QuakeDataSet(Dataset):
             train_indices.extend(indices[num_in_test:])
 
         return train_indices, test_indices
+
+    def get_distribution(self):
+        # Print info on class distribution
+        print("Total training examples: {}".format(len(self.Y)))
+        print("-------------------------------------------")
+        print("Class distribution: ")
+        for k, v in label_dict.items():
+            print("Number of {} examples: {}".format(k, np.count_nonzero(self.Y == v)))
+        print("-------------------------------------------")
 
     def _pad_data(self, x):
         length = x.shape[-1]
@@ -156,6 +189,12 @@ class QuakeDataSet(Dataset):
 
         return st
 
+    def modify_excerpt_len(self, new_len):
+        self.excerpt_len = new_len
+
+    def modify_flags(self, avg_flag):
+        self.avg = avg_flag
+
     def _avg_data(self, arr):
         """
         Average out n consecutive data points to get fewer samples while still retaining info
@@ -168,10 +207,11 @@ class QuakeDataSet(Dataset):
 
         num_of_samples = arr.shape[0]
         factor = int(num_of_samples / self.excerpt_len)
+        # assert num_of_samples % self.excerpt_len == 0, "Error: Number of samples not perfectly " \
+        #                                                "divisible"
 
-        assert num_of_samples % self.excerpt_len == 0, "Error: Number of samples not perfectly " \
-                                                       "divisible"
-        arr = np.mean(arr.reshape(-1, factor), axis=1)
+        if factor > 1 and num_of_samples % self.excerpt_len == 0:
+            arr = np.mean(arr.reshape(-1, factor), axis=1)
 
         return arr
 
@@ -187,13 +227,12 @@ class QuakeDataSet(Dataset):
             avg (bool): If set to true, data is averaged to len = excerpt len
 
         Returns (np arrays): Two arrays X and Y where X = training data, Y = training labels and
-                            X_names = file name associated with the data in
-X
+                            X_names = file name associated with the data in X
         """
         fl_map = generate_file_name_from_labels(file_name)
         X, Y, X_names, X_ids, X_users = [], [], [], [], []
         train_path = DATA_PATH / training_folder
-
+        print("Loading data from folder {}".format(training_folder))
         for folder, files in fl_map.items():
             folder_path = train_path / folder / folder_type
             for file in files:
@@ -233,6 +272,7 @@ X
                     # Warn users if some file is not found
                     warnings.warn("File not found: {}".format(file[0]))
 
+        print("Number of samples loaded: {}".format(len(Y)))
         return X, Y, X_names, X_ids, X_users
 
     def _load_data_from_folder(self, training_folder, folder_type, data_type):
@@ -257,6 +297,7 @@ X
                             X_names = file name associated with the data in X
         """
 
+        print("Loading data from folder {}".format(training_folder))
         X, Y, X_names = [], [], []
         train_path = DATA_PATH / training_folder
         for folder in os.listdir(train_path):
@@ -297,4 +338,5 @@ X
                                 X_names.append(file)
                                 Y.append(folder_labels[data_type][folder_type])
 
+        print("Number of samples loaded: {}".format(len(Y)))
         return X, Y, X_names

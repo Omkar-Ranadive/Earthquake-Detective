@@ -1,8 +1,3 @@
-'''
-Exp 4: Only Earthquake detective data + (extra tremor data) -> Excerpt len set to 20,000 samples
-Doesn't work well as actual excerpts are larger and data contains user bias
-'''
-
 import sys
 sys.path.append('../../src/')
 import ml.models
@@ -30,7 +25,7 @@ ld_files = [{'file_name': '../../data/classification_data_Vivitang.txt',
              'folder_type': 'trimmed_data', 'avg': False},
 
             {'file_name': '../../data/classification_data_suzanv.txt',
-                         'training_folder': 'Testing_Set_Suzan',
+             'training_folder': 'Testing_Set_Suzan',
             'folder_type': 'trimmed_data', 'avg': False
              },
 
@@ -42,31 +37,36 @@ ld_files = [{'file_name': '../../data/classification_data_Vivitang.txt',
             {'file_name': '../../data/classification_data_Jeff503.txt',
              'training_folder': 'Jeff_Set',
              'folder_type': 'trimmed_data', 'avg': False
-             }
-            ]
+             }]
+
 
 ld_folders = [{'training_folder': 'Training_Set_Tremor', 'folder_type': 'positive',
               'data_type': 'tremor'},
               ]
 
-#
-# ds = QuakeDataSet(ld_files=ld_files, ld_folders=ld_folders, excerpt_len=20000)
+# #
+# ds = QuakeDataSet(ld_files=ld_files, ld_folders=ld_folders, excerpt_len=40000)
 # print(len(ds.X), len(ds.X_users), len(ds.X_ids), len(ds.X_names), len(ds.Y))
-# save_file(ds, 'ds_large2')
+# save_file(ds, 'ds_large_dynamic')
 
-transform_and_save = False
+
+transform_and_save = True
 load_transformed = True
 train_mod = True
 
 J, Q = 10, 32
+excerpt_len = 20000
 
 if transform_and_save:
 
-    ds = load_file('ds_large2')
-
+    ds = load_file('ds_large_dynamic')
+    users = ['Vivitang', 'suzanv']
     # Split data into train and test
-    train_indices, test_indices = ds.get_indices_split(train_percent=0.8, seed=True)
+    train_indices, test_indices = ds.get_indices_split(train_percent=0.8, seed=False, users=users)
     print(len(train_indices), len(test_indices))
+
+    ds.modify_flags(avg_flag=True)
+    ds.modify_excerpt_len(new_len=20000)
 
     train_set = torch.utils.data.Subset(ds, indices=train_indices)
     test_set = torch.utils.data.Subset(ds, indices=test_indices)
@@ -79,30 +79,30 @@ if transform_and_save:
     combined_test = []
     for index, data in enumerate(train_loader):
         print("Processing batch: {}".format(index))
-        coeffs = scatter_transform(data['data'], J=J, Q=Q, excerpt_len=20000, cuda=True)
+        coeffs = scatter_transform(data['data'], J=J, Q=Q, excerpt_len=excerpt_len, cuda=True)
         # Make sure to pass both seismic and coeffs as we will be training on both
         combined_train.append({'data': [data['data'], coeffs.cpu()], 'label': data['label'],
                                'user': data['user'], 'sub_id': data['sub_id']})
         torch.cuda.empty_cache()
         # print(torch.cuda.memory_summary(0))
 
-    save_file(combined_train, 'combined_train_exp4_J{}_Q{}'.format(J, Q))
+    save_file(combined_train, 'combined_train_exp5_J{}_Q{}'.format(J, Q))
 
     print("Starting test set: ")
     for index, data in enumerate(test_loader):
         print("Processing batch: {}".format(index))
-        coeffs = scatter_transform(data['data'], J=J, Q=Q, excerpt_len=20000, cuda=True)
+        coeffs = scatter_transform(data['data'], J=J, Q=Q, excerpt_len=excerpt_len, cuda=True)
         combined_test.append({'data': [data['data'], coeffs.cpu()], 'label': data['label'],
                                'user': data['user'], 'sub_id': data['sub_id']})
         torch.cuda.empty_cache()
 
-    save_file(combined_test, 'combined_test_exp4_J{}_Q{}'.format(J, Q))
+    save_file(combined_test, 'combined_test_exp5_J{}_Q{}'.format(J, Q))
 
 
 if load_transformed:
     # Load file
-    transformed_train = load_file('combined_train_exp4_J{}_Q{}'.format(J, Q))
-    transformed_test = load_file('combined_test_exp4_J{}_Q{}'.format(J, Q))
+    transformed_train = load_file('combined_train_exp5_J{}_Q{}'.format(J, Q))
+    transformed_test = load_file('combined_test_exp5_J{}_Q{}'.format(J, Q))
 
 
 # Train the model
@@ -116,10 +116,10 @@ if train_mod:
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # Initialize Tensorboard
-    exp_name = "Exp4"
+    exp_name = "Exp5"
     exp_id = '{}_{}'.format(exp_name, datetime.now().strftime('%d_%m_%Y-%H_%M_%S'))
     writer = SummaryWriter('runs/{}'.format(exp_id))
 
     train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
           optimizer=optimizer, train_set=transformed_train, test_set=transformed_test,
-          exp_id=exp_id, writer=writer,  print_freq=20, test_freq=30)
+          exp_id=exp_id, writer=writer,  save_freq=30, print_freq=20, test_freq=30)

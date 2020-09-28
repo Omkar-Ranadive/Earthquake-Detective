@@ -3,7 +3,7 @@ Deprecated file: Just keeping it, separate loading into numpy arrays is needed i
 """
 
 
-from src.utils import generate_file_name_from_labels
+from utils import generate_file_name_from_labels
 from constants import DATA_PATH, label_dict, folder_labels
 from obspy import read
 import os

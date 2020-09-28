@@ -262,9 +262,9 @@ def compare_classifications(subjects, classifications, user_names):
 
 
 if __name__ == '__main__':
-    # extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
-    #                        subjects='earthquake-detective-subjects.csv',
-    #                        user_names=['Jeff503'])
+    extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
+                           subjects='earthquake-detective-subjects.csv',
+                           user_names=['suzanv'])
 
     # compare_classifications(subjects='earthquake-detective-subjects.csv',
     #                         classifications='earthquake-detective-classifications.csv',
@@ -274,6 +274,6 @@ if __name__ == '__main__':
     # generate_stats(subjects='earthquake-detective-subjects.csv',
     #                          classifications='earthquake-detective-classifications.csv')
 
-    choose_golden_samples(subjects='earthquake-detective-subjects.csv',
-                             classifications='earthquake-detective-classifications.csv',
-                            sub_stats='stats_subs12_09_2020-20_10_24.txt')
+    # choose_golden_samples(subjects='earthquake-detective-subjects.csv',
+    #                          classifications='earthquake-detective-classifications.csv',
+    #                         sub_stats='stats_subs12_09_2020-20_10_24.txt')

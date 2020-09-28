@@ -1,7 +1,8 @@
 """
 Experiment details: Model with wavelet scattering transform - Supervised version
 """
-
+import sys
+sys.path.append('../../src/')
 import ml.models
 from ml.data_processing import load_data
 import torch

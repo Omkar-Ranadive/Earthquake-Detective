@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from src.constants import SAVE_PATH, n_classes
+from constants import SAVE_PATH, n_classes
 from sklearn.metrics import confusion_matrix
 
 
@@ -40,6 +40,8 @@ def train(num_epochs,
     for epoch in range(num_epochs):
         total_loss = []
         accuracies = []
+        combined_mat = np.zeros((n_classes, n_classes))
+
         for index, data in enumerate(train_set):
             # Move data to device individually if data consists of multi sub-data components
             if isinstance(data['data'], list):
@@ -58,6 +60,11 @@ def train(num_epochs,
             correct_count = torch.sum(correct_mat).item()
             accuracies.append((correct_count/len(predicted)))
 
+            # Calculate confusion matrix
+            conf_mat = confusion_matrix(y_true=batch_out.cpu().numpy(),
+                                        y_pred=predicted.cpu().numpy(), labels=range(n_classes))
+            combined_mat += conf_mat
+
             total_loss.append(loss.item())
             optimizer.zero_grad()
             loss.backward()
@@ -66,14 +73,16 @@ def train(num_epochs,
         if epoch % test_freq == 0 and test_set is not None:
             conf_mat, test_acc, test_loss = test(model, test_set, loss_func)
             print("Testing Accuracy {} Testing Loss {}".format(test_acc, test_loss))
-            print("Confusion Matrix: ")
+            print("Confusion Matrix for testing set:  ")
             print(conf_mat)
             if writer:
                 writer.add_scalar('Avg Test Acc', test_acc, epoch)
 
         if epoch % print_freq == 0:
-            print("Epoch: {}  Avg Loss: {}: loss, Avg Acc: {}".format(epoch, np.mean(
+            print("Epoch: {}  Avg Test Loss: {}: loss, Avg Train Acc: {}".format(epoch, np.mean(
                 total_loss), np.mean(accuracies)))
+            print("Confusion matrix for training set")
+            print(combined_mat)
 
         if writer:
             writer.add_scalar('Avg Loss', np.mean(total_loss), epoch)

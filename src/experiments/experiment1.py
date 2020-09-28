@@ -2,7 +2,8 @@
 Experiment details: Running with a simple convolution architecture
 
 """
-
+import sys
+sys.path.append('../../src/')
 import ml.models
 from ml.data_processing import load_data
 import torch

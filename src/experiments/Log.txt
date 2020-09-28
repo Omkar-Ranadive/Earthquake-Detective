@@ -173,6 +173,21 @@ Train and Test sets with model shown before:
 81% training, 78% testing accuracy 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Models with more data 
+
+model_Exp4_24_09_2020-22_04_14_99
+
+WavCon net (Wavelet transforms + conv) -> 65% 
+
+
+model_Exp4_24_09_2020-16_26_52_99
+Wav Net (Wavelet transform only) -> 63% 
+
+In both cases, accuracy stagnates quickly. Main problem -> Unable to distinguish between noise and earthquakes 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Doesn't work well with Earthquake Det only data -> Everything collapses to a single label (without averaging; greater noise)
+Even if excerpt len is increased to 40k 
 
 
 

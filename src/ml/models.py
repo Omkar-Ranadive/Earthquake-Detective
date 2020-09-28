@@ -49,16 +49,23 @@ class WavNet(nn.Module):
         super(WavNet, self).__init__()
 
         # self.pool1 = nn.MaxPool1d(kernel_size=20)
-        self.fc1 = nn.Linear(2361, 128)
-        self.fc2 = nn.Linear(128, n_classes)
+        self.fc1 = nn.Linear(4005, 1024)
+        self.fc2 = nn.Linear(1024, 128)
+        self.fc3 = nn.Linear(128, n_classes)
 
-    def forward(self, x):
+    def forward(self, batch_in):
         # x = self.pool1(x)
-        x = x.view(-1, self.flatten_features(x))
-        x = F.relu(self.fc1(x))
-        x = F.softmax(self.fc2(x), dim=1)
 
-        return x
+        if isinstance(batch_in, list):
+            x, transformed_x = batch_in[0], batch_in[1]
+        else:
+            transformed_x = batch_in
+        transformed_x = transformed_x.view(-1, self.flatten_features(transformed_x))
+        transformed_x = F.relu(self.fc1(transformed_x))
+        transformed_x = F.relu(self.fc2(transformed_x))
+        transformed_x = F.softmax(self.fc3(transformed_x), dim=1)
+
+        return transformed_x
 
     @staticmethod
     def flatten_features(x):
@@ -78,7 +85,7 @@ class WavCon(nn.Module):
         self.pool1 = nn.MaxPool1d(kernel_size=10)
         self.conv2 = nn.Conv1d(6, 8, kernel_size=50, stride=2)
         self.pool2 = nn.MaxPool1d(kernel_size=3)
-        self.fc1 = nn.Linear(3625, 1024)
+        self.fc1 = nn.Linear(4005, 1024)
         self.fc2 = nn.Linear(1024, 128)
         self.fc3 = nn.Linear(128, n_classes)
 
@@ -124,15 +131,17 @@ if __name__ == '__main__':
     batch, features, excerpt = 500, 3, 20000
     dummy_x = torch.rand((50, 3, 787))
     dummy_x2 = torch.rand((50, 3, 20000))
+    dummy_x3 = torch.rand((100, 3, 433))
+    dummy_x4 = torch.rand((100, 3, 1335))
 
     ''' For simple Feature Extractor Net '''
     # model = FeatureExtractor()
     # model(dummy_x)
 
     ''' For WavNet'''
-    # model = WavNet()
-    # model(dummy_x)
+    model = WavNet()
+    model(dummy_x4)
 
-    '''For WavCon Net'''
-    model = WavCon()
-    model([dummy_x2, dummy_x])
+    # '''For WavCon Net'''
+    # model = WavCon()
+    # model([dummy_x4, dummy_x])

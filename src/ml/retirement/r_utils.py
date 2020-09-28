@@ -1,4 +1,4 @@
-from constants import DATA_PATH, META_PATH, n_classes, label_dict
+from constants import DATA_PATH, META_PATH, n_classes, label_dict, index_to_label
 import pandas as pd
 import numpy as np
 import json
@@ -21,7 +21,7 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
     df_class = pd.read_csv(DATA_PATH / classifications)
     n_users = 20
     user_names = []
-    rel_mat = np.zeros((n_users, 2*(n_classes+1)))
+    rel_mat = np.zeros((n_users, (n_classes+1), (n_classes+1)))
     rel_dict = defaultdict(list)  # Mapping of user_names -> reliability in terms of accuracy
     # Reliability matrix has the following structure:
     golden_info = {}  # Mapping of subject id -> golden labels
@@ -55,30 +55,50 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
                 label = meta[0]['value']
                 l_index = label_dict[label]
                 if l_index == label_dict[gold_label]:
-                    rel_mat[index, l_index] += 1
+                    rel_mat[index, l_index, l_index] += 1
                 else:
-                    rel_mat[index, l_index + n_classes + 1] += 1
+                    rel_mat[index, label_dict[gold_label], l_index] += 1
 
         # Now, from the matrix, calculate the score for each label and overall score
-        for i in range(n_classes+1):
-            # Each index i corresponds to some class like Earthquake, Tremor etc
-            # We essentially calculate correct/total_samples for that specific class i
-            class_total = rel_mat[index, i] + rel_mat[index, i + n_classes + 1]
-            score = rel_mat[index, i] / class_total if class_total > 0 else -1
-            rel_dict[user].append(score)
+        # Decide the beta to calculate F_beta score
+        beta = 1.0  # beta < 1.0 -> more weight to precision / beta > 1.0 -> more weight to recall
+        for c_id in range(n_classes+1):
+            '''
+            Rel Dict will contain the following info: 
+            Index 0 to n_classes = [class wise precision (TP/(TP + FP)), 
+                                      class wise recall (TP/(TP+FN)), 
+                                      class wise accuracy = TP + TN / (all)] 
+            
+            Precision - Proportion of positive samples which were actually positive 
+            Recall - Proportion of correctly labeled positive samples out of total +ve samples 
+         
+            '''
 
-        # Finally, calculate the overall score correct_classifications_across_all/total_samples
-        overall_total = np.sum(rel_mat[index:, ])
-        if overall_total > 0:
-            total_correct = np.sum(rel_mat[index, :n_classes+1]) / overall_total
-        else:
-            total_correct = -1
+            # Calculate the true +ve, -ve and false +ve, -ve
+            tp = rel_mat[index, c_id, c_id]
+            fn = np.sum(np.delete(rel_mat[index, c_id, :], c_id, axis=0))
+            fp = np.sum(np.delete(rel_mat[index, :, c_id], c_id, axis=0))
+            mask = np.ones((n_classes+1, n_classes+1), dtype=bool)
+            mask[:, c_id] = False
+            mask[c_id, :] = False
+            tn = np.sum(rel_mat[index, :, :][mask])
 
-        rel_dict[user].append(total_correct)
+            # Calculate precision, recall and acc
+            precision = tp/(tp + fp)
+            recall = tp/(tp + fn)
+            acc = (tp + tn)/(tp + tn + fp + fn)
+            f_beta = (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
+            rel_dict[user].append([precision, recall, acc, f_beta])
 
     for index, row in enumerate(rel_mat):
         cur_user = user_names[index]
-        print("User {}  Rel Mat {}  Score {}".format(cur_user, row, rel_dict[cur_user]))
+        print("User: {} \n {}".format(cur_user, row))
+        print("Scores: ")
+        for k, v in sorted(index_to_label.items()):
+            print("Class: {} Precision: {}  Recall {} Accuracy {} F_Score {}"
+                  .format(v, rel_dict[cur_user][k][0], rel_dict[cur_user][k][1], rel_dict[
+                   cur_user][k][2], rel_dict[cur_user][k][3]))
+        print("*"*50)
 
 
 def map_users_to_index(user_stats):
@@ -104,8 +124,8 @@ def map_users_to_index(user_stats):
 
 
 if __name__ == '__main__':
-    # calculate_reliability_mat(golden_samples='Golden/golden_classified.txt',
-    #                           user_stats='stats_users_12_09_2020-20_10_24.txt',
-    #                           classifications='earthquake-detective-classifications.csv')
+    calculate_reliability_mat(golden_samples='Golden/golden_classified.txt',
+                              user_stats='stats_users_12_09_2020-20_10_24.txt',
+                              classifications='earthquake-detective-classifications.csv')
 
-    map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
+    # map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')

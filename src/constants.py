@@ -23,6 +23,12 @@ label_dict = {'Earthquake': 0,
               'above': 3
               }
 
+index_to_label = {0: 'Earthquake',
+                  1: 'Noise',
+                  2: 'Tremor',
+                  3: 'Unclear Event'}
+
+
 folder_labels = {'earthquake': {'positive': 0, 'negative': 1},
                  'tremor': {'positive': 2, 'negative': 1}}
 

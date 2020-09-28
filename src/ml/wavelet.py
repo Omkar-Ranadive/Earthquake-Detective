@@ -8,10 +8,10 @@ def scatter_transform(data, excerpt_len, J=8, Q=32, cuda=False):
     Args:
         data (torch tensor): Seismic data in form (batch, features, excerpt_len)
         excerpt_len (int): Number of samples in each seismic signal component
-        J (int): The maximum log-scale of the scattering transform. In other words, the maximum
-        scale is given by 2^J.
+        J (int): The maximum scale of filters. That is, largest filter will be of size 2^J in
+        time interval.
         Q (int): The number of first-order wavelets per octave (second-order wavelets are fixed to
-         one wavelet per octave). Defaults to 1.
+         one wavelet per octave). Defaults to 1. Larger the Q, better frequency resolution.
         cuda (bool): Scattering transform will use GPU if true and GPU is available
 
     Returns (torch tensor): Scattering coefficients of the form (batch, features, x, y)
@@ -37,6 +37,10 @@ def scatter_transform(data, excerpt_len, J=8, Q=32, cuda=False):
 
     # Average over the time dimension
     s_coeffs = torch.mean(s_coeffs, dim=-1)
+
+    # Clear the GPU memory
+    del data
+    del scattering
 
     return s_coeffs
 

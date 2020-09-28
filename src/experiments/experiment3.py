@@ -1,7 +1,8 @@
 """
 Experiment details: Model which combines convolution and wavelet scattering
 """
-
+import sys
+sys.path.append('../../src/')
 import ml.models
 import torch
 from ml.dataset import QuakeDataSet
