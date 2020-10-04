@@ -310,6 +310,8 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         plt.savefig(file_path, dpi=300,  bbox_inches='tight', pad_inches=0)
         plt.cla()
 
+    plt.close(fig)  # Clear memory
+
 
 def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
                    speed=400, damping=2e-8, folder_name="default_folder"):
@@ -372,3 +374,4 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         file_path = audio_path / (file_id + ".mp3")
 
         wavfile.write(file_path, rate=int(new_sampling_rate), data=np.int32(scaled_sound))
+

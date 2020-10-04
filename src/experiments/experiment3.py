@@ -1,5 +1,7 @@
 """
 Experiment details: Model which combines convolution and wavelet scattering
+
+Outcome -> Doesn't work well (But further testing required by increasing convolution filters)
 """
 import sys
 sys.path.append('../../src/')

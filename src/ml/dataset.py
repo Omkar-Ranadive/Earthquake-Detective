@@ -7,6 +7,11 @@ import os
 import warnings
 from kymatio.numpy import Scattering1D
 from ml.retirement.r_utils import map_users_to_index
+import matplotlib.pyplot as plt
+from PIL import Image
+from pathlib import Path
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class QuakeDataSet(Dataset):
@@ -25,7 +30,7 @@ class QuakeDataSet(Dataset):
             mode (str): mode can be 'train' or any other str. For train, random offset sampling
                         is performed.
         """
-        self.X, self.Y, self.X_names, self.X_users, self.X_ids = [], [], [], [], []
+        self.X, self.Y, self.X_names, self.X_users, self.X_ids, self.X_imgs = [], [], [], [], [], []
         self.excerpt_len = excerpt_len
         self.mode = mode
         self.transforms = transforms
@@ -34,15 +39,20 @@ class QuakeDataSet(Dataset):
 
         if ld_files is not None:
             for ld_file in ld_files:
-                x, y, x_names, x_ids, x_users = self._load_data(**ld_file)
+                x, y, x_names, x_ids, x_users, x_imgs = self._load_data(**ld_file)
                 self.X.extend(x)
                 self.Y.extend(y)
                 self.X_names.extend(x_names)
                 self.X_ids.extend(x_ids)
                 self.X_users.extend(x_users)
+                if not x_imgs:
+                    self.X_imgs.extend(len(y)*[-1])
+                else:
+                    self.X_imgs.extend(x_imgs)
+
         if ld_folders is not None:
             for ld_folder in ld_folders:
-                x, y, x_names = self._load_data_from_folder(**ld_folder)
+                x, y, x_names, x_imgs = self._load_data_from_folder(**ld_folder)
                 self.X.extend(x)
                 self.Y.extend(y)
                 self.X_names.extend(x_names)
@@ -50,6 +60,10 @@ class QuakeDataSet(Dataset):
                 # As folders are different data sources (not from Zooniverse)
                 self.X_ids.extend(len(y)*[-1])
                 self.X_users.extend(len(y)*[-1])
+                if not x_imgs:
+                    self.X_imgs.extend(len(y)*[-1])
+                else:
+                    self.X_imgs.extend(x_imgs)
 
         # Convert to numpy
         self.Y = np.array(self.Y, dtype='int64')
@@ -83,8 +97,10 @@ class QuakeDataSet(Dataset):
         for transform in self.transforms:
             if transform == 'wavelet':
                 t_item = self.scattering(t_item)
+
         return {'data': t_item, 'label': self.Y[item], 'sub_id': self.X_ids[item],
-                'user': self.X_users[item]}
+                'user': self.X_users[item], 'img': np.array(self.X_imgs[item], dtype='float32'),
+                'index': item}
 
     def __len__(self):
         return len(self.X)
@@ -215,7 +231,33 @@ class QuakeDataSet(Dataset):
 
         return arr
 
-    def _load_data(self, file_name, training_folder, folder_type="trimmed_data", avg=False):
+    @staticmethod
+    def _gen_plot(tr, save_path):
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(tr.times("matplotlib"), tr.data, "b-")
+        ax.axis('off')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.close(plt.gcf())  # Close the figure to release memory
+
+    @staticmethod
+    def _process_image(img, crop):
+        # Convert to gray scale
+        new_img = img.convert(mode="1", dither=Image.NONE)
+
+        # Crop the time axis and boundaries for images from EQ detective
+        if crop:
+            width, height = new_img.size
+            new_img = new_img.crop((80, 0, width, height - 275))
+
+        # Resize the image
+        new_img = new_img.resize((320, 200))
+        new_img = np.asarray(new_img)
+
+        return new_img
+
+    def _load_data(self, file_name, training_folder, folder_type="trimmed_data", avg=False,
+                   load_img=False):
         """
         Function to load data from text file
         Args:
@@ -225,16 +267,21 @@ class QuakeDataSet(Dataset):
             folder_type (str): Specify what kind of data to load (processed_data, raw_data, audio,
                                plots). Default = trimmed_data
             avg (bool): If set to true, data is averaged to len = excerpt len
+            load_img (bool): Also loads plots if set to true
 
-        Returns (np arrays): Two arrays X and Y where X = training data, Y = training labels and
-                            X_names = file name associated with the data in X
+        Returns (np arrays): Five arrays X and Y where X = training data, Y = training labels and
+                            X_names = file name associated with the data in X, X_ids = subject
+                            ids, X_users = user ids
         """
         fl_map = generate_file_name_from_labels(file_name)
-        X, Y, X_names, X_ids, X_users = [], [], [], [], []
+        X, Y, X_names, X_ids, X_users, X_imgs = [], [], [], [], [], []
         train_path = DATA_PATH / training_folder
+        training_folder = Path(training_folder)
         print("Loading data from folder {}".format(training_folder))
         for folder, files in fl_map.items():
             folder_path = train_path / folder / folder_type
+            img_path = train_path / folder / 'plots'
+            file_name = training_folder / folder / folder_type
             for file in files:
                 # File is a list of following form = [file_name, label, sub_id, user]
                 # Also, load the BHE and BHN components along with the Z component
@@ -245,12 +292,30 @@ class QuakeDataSet(Dataset):
                 file_path_z = str(folder_path / (file[0] + '.sac'))
                 file_path_e = str(folder_path / (f_bhe + '.sac'))
                 file_path_n = str(folder_path / (f_bhn + '.sac'))
+                img_path_z = str(img_path / (file[0] + '.png'))
+                img_path_e = str(img_path / (f_bhe + '.png'))
+                img_path_n = str(img_path / (f_bhn + '.png'))
 
                 if os.path.exists(file_path_z) and os.path.exists(file_path_e) and os.path.exists(
                         file_path_n):
                     st1 = read(file_path_z)
                     st2 = read(file_path_e)
                     st3 = read(file_path_n)
+
+                    if load_img:
+                        # We are assuming that the images exist in case of EQ data
+                        # If not, check the data_utils gen_plots function and generate them
+                        # manually
+                        img_z = Image.open(img_path_z)
+                        img_e = Image.open(img_path_e)
+                        img_n = Image.open(img_path_n)
+
+                        # Process the images
+                        img_z = self._process_image(img_z, crop=True)
+                        img_e = self._process_image(img_e, crop=True)
+                        img_n = self._process_image(img_n, crop=True)
+
+                        X_imgs.append([img_z, img_e, img_n])
 
                     # Re-sample the data
                     st1 = self._resample_data(st1)
@@ -263,7 +328,7 @@ class QuakeDataSet(Dataset):
                         st3[0].data = self._avg_data(st3[0].data)
 
                     X.append([st1[0].data, st2[0].data, st3[0].data])
-                    X_names.append(file[0])
+                    X_names.append(str(file_name / (file[0] + '.sac')))
                     X_ids.append(int(file[2]))
                     X_users.append(self.user_to_index[file[3]])
                     Y.append(label_dict[file[1]])
@@ -273,9 +338,10 @@ class QuakeDataSet(Dataset):
                     warnings.warn("File not found: {}".format(file[0]))
 
         print("Number of samples loaded: {}".format(len(Y)))
-        return X, Y, X_names, X_ids, X_users
 
-    def _load_data_from_folder(self, training_folder, folder_type, data_type):
+        return X, Y, X_names, X_ids, X_users, X_imgs
+
+    def _load_data_from_folder(self, training_folder, folder_type, data_type, load_img=False):
         """
         Function to load data directly from folder.
         Assumes the following folder structure:
@@ -292,16 +358,21 @@ class QuakeDataSet(Dataset):
             training_folder (str): Name of parent training folder
             folder_type (str): Type of examples to load (i.e positive, negative etc)
             data_type (str): Can be 'earthquake' or 'tremor'
+            load_img (bool): If set to true, plots are also loaded. Plots will be created and
+            then loaded if they don't exist.
 
-       Returns (np arrays): Two arrays X and Y where X = training data, Y = training labels and
-                            X_names = file name associated with the data in X
+       Returns (np arrays): Five arrays X and Y where X = training data, Y = training labels and
+                            X_names = file name associated with the data in X, X_ids = subject
+                            ids, X_users = user ids
         """
 
         print("Loading data from folder {}".format(training_folder))
-        X, Y, X_names = [], [], []
+        X, Y, X_names, X_imgs = [], [], [], []
         train_path = DATA_PATH / training_folder
+        training_folder = Path(training_folder)
         for folder in os.listdir(train_path):
             folder_path = train_path / folder
+            file_name = training_folder / folder
             if os.path.isdir(folder_path):
                 # Each earthquake data has a different folder, so loop through this inner folder
                 for inner_folder in os.listdir(folder_path):
@@ -329,14 +400,38 @@ class QuakeDataSet(Dataset):
                                 st2 = read(file_path_e)
                                 st3 = read(file_path_n)
 
+                                if load_img:
+                                    img_path_z = file_path_z[:-3] + '.png'
+                                    img_path_e = file_path_e[:-3] + '.png'
+                                    img_path_n = file_path_n[:-3] + '.png'
+
+                                    # If plot doesn't exist, create them first
+                                    if not os.path.exists(img_path_z):
+                                        self._gen_plot(st1[0], img_path_z)
+                                        self._gen_plot(st2[0], img_path_e)
+                                        self._gen_plot(st3[0], img_path_n)
+
+                                    img_z = Image.open(img_path_z)
+                                    img_e = Image.open(img_path_e)
+                                    img_n = Image.open(img_path_n)
+
+                                    # Process the images
+                                    img_z = self._process_image(img_z, crop=False)
+                                    img_e = self._process_image(img_e, crop=False)
+                                    img_n = self._process_image(img_n, crop=False)
+
+                                    X_imgs.append([img_z, img_e, img_n])
+
                                 # Re-sample the data
                                 st1 = self._resample_data(st1)
                                 st2 = self._resample_data(st2)
                                 st3 = self._resample_data(st3)
 
                                 X.append([st1[0].data, st2[0].data, st3[0].data])
-                                X_names.append(file)
+
+                                X_names.append(str(file_name / inner_folder / (file + 'BHZ' +
+                                                                             '.SAC')))
                                 Y.append(folder_labels[data_type][folder_type])
 
         print("Number of samples loaded: {}".format(len(Y)))
-        return X, Y, X_names
+        return X, Y, X_names, X_imgs

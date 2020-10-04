@@ -8,3 +8,4 @@ tensorboard
 h5py
 scikit-learn
 kymatio
+joblib

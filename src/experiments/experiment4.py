@@ -1,6 +1,7 @@
 '''
 Exp 4: Only Earthquake detective data + (extra tremor data) -> Excerpt len set to 20,000 samples
-Doesn't work well as actual excerpts are larger and data contains user bias
+
+Outcome -> Doesn't work well as actual excerpts are larger and data contains user bias
 '''
 
 import sys

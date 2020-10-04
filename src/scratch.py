@@ -26,9 +26,7 @@ from constants import DATA_PATH
 #             info[-1] = label_dict[int(info[-1])]
 #             new_info = " ".join(info)
 #             f.write(new_info + '\n')
-import numpy as np
-
-a = np.ones((40000, ))
-factor = int(a.shape[0] / 20000)
-print(factor)
-print(np.mean(a.reshape(-1, factor), axis=1).shape)
+from pathlib import Path
+a = "Hello"
+b = "Mello"
+print(Path(a) / b)

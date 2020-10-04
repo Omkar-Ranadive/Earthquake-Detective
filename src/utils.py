@@ -1,7 +1,7 @@
 from collections import defaultdict
 import pickle
 from constants import DATA_PATH
-
+import joblib
 
 def clean_event_id(event_id):
     """
@@ -107,5 +107,32 @@ def load_file(filename):
     """
     with open(DATA_PATH / filename, 'rb') as f:
         file = pickle.load(f)
+
+    return file
+
+
+def save_file_jl(file, filename):
+    """
+      Use joblib to save the file instead. Works better for large numpy arrays
+      Args:
+          file (any object): Can be any Python object. We would normally use this to save the
+          processed Pytorch dataset
+          filename (str): Name of the file
+      """
+    f = str(DATA_PATH / filename)
+    joblib.dump(file, f)
+
+
+def load_file_jl(filename):
+    """
+    Load a pickle file
+    Args:
+        filename (str): Name of the file
+
+    Returns (Python obj): Returns the loaded pickle file
+
+    """
+    f = str(DATA_PATH / filename)
+    file = joblib.load(f)
 
     return file

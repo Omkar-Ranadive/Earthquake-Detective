@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from constants import SAVE_PATH, n_classes
+from constants import DATA_PATH, SAVE_PATH, n_classes
 from sklearn.metrics import confusion_matrix
 
 
@@ -79,7 +79,7 @@ def train(num_epochs,
                 writer.add_scalar('Avg Test Acc', test_acc, epoch)
 
         if epoch % print_freq == 0:
-            print("Epoch: {}  Avg Test Loss: {}: loss, Avg Train Acc: {}".format(epoch, np.mean(
+            print("Epoch: {}  Avg Train Loss: {}: loss, Avg Train Acc: {}".format(epoch, np.mean(
                 total_loss), np.mean(accuracies)))
             print("Confusion matrix for training set")
             print(combined_mat)
@@ -127,3 +127,58 @@ def test(model, test_set, loss_func):
             combined_mat += conf_mat
 
     return combined_mat, np.mean(accuracies), np.mean(total_loss)
+
+
+def generate_model_log(model, model_name, sample_set, loss_func, names):
+    model.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    accuracies = []
+    combined_mat = np.zeros((n_classes, n_classes))
+    total_loss = []
+
+    file_name = model_name[:-2] + '.txt'
+    with open(SAVE_PATH / file_name, 'w') as f:
+        with torch.no_grad():
+            for index, data in enumerate(sample_set):
+                f.write("Batch {}\n".format(index))
+                if isinstance(data['data'], list):
+                    batch_in = [d.to(device) for d in data['data']]
+                else:
+                    batch_in = data['data'].to(device)
+
+                batch_out = data['label'].to(device)
+                output = model(batch_in)
+
+                # Calculate loss
+                total_loss.append(loss_func(output, batch_out).item())
+
+                # Calculate accuracy
+                _, predicted = torch.max(output, 1)
+
+                predicted_labels = predicted.cpu()
+                true_labels = data['label']
+                users = data['user']
+                subject_ids = data['sub_id']
+                indices = data['index']
+                for i, probs in enumerate(output.cpu()):
+                    f.write("Prob(E/N/T): {} P: {}  T: {} UID: {} Path: {}\n\n".format(
+                        probs, predicted_labels[i].item(), true_labels[i].item(),
+                        users[i].item(), names[indices[i]]))
+
+                f.write("--"*20 + "\n")
+                correct_mat = (predicted == batch_out).squeeze()
+                correct_count = torch.sum(correct_mat).item()
+                accuracies.append(correct_count / len(predicted))
+                conf_mat = confusion_matrix(y_true=batch_out.cpu().numpy(),
+                                            y_pred=predicted.cpu().numpy(), labels=range(n_classes))
+                combined_mat += conf_mat
+
+        f.write("Confusion Matrix: \n")
+        np.savetxt(f, combined_mat, fmt='%i')
+
+        f.write("\n Accuracy: {} Total loss: {}\n".format(np.mean(accuracies), np.mean(
+            total_loss)))
+
+        f.close()
+
+

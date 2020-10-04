@@ -29,14 +29,14 @@ ld_files = [{'file_name': '../../data/V_golden_new.txt', 'training_folder': 'Tra
                 'Testing_Set_Suzan', 'folder_type': 'trimmed_data', 'avg': True}
             ]
 
+
+
 ld_folders = [{'training_folder': 'Training_Set_Prem', 'folder_type': 'positive',
                'data_type': 'earthquake'},
               {'training_folder': 'Training_Set_Prem', 'folder_type': 'negative',
                'data_type': 'earthquake'},
               {'training_folder': 'Training_Set_Tremor', 'folder_type': 'positive',
                'data_type': 'tremor'}, ]
-
-
 # Quick bool values to save data or directly load saved data
 transform_and_save = True
 load_transformed = False

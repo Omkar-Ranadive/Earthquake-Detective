@@ -1,9 +1,8 @@
 """
-Exp 5: Applying Wavelet Transform on Golden users data / Experimenting with excerpt len and
-size of J and Q
+Exp 8: Starting with model trained on clean data and then training on noisy data
 
-Outcome -> Beyond a certain point, changing J and Q doesn't make too much difference.
-J = 8, Q = 64 seems to be a good value
+Outcome -> Converges to the same outcome as training clean adnd noisy data together
+
 """
 
 import sys
@@ -23,47 +22,9 @@ from ml.wavelet import scatter_transform
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Hyper parameters
-num_epochs = 200
+num_epochs = 150
 batch_size = 100
 learning_rate = 1e-4
-
-# Load the data as PyTorch tensors
-ld_files = [{'file_name': '../../data/classification_data_Vivitang.txt',
-             'training_folder': 'Vivian_Set',
-             'folder_type': 'trimmed_data', 'avg': False},
-
-            {'file_name': '../../data/classification_data_suzanv.txt',
-             'training_folder': 'Testing_Set_Suzan',
-            'folder_type': 'trimmed_data', 'avg': False
-             },
-
-            {'file_name': '../../data/classification_data_ElisabethB.txt',
-             'training_folder': 'ElisabethB_set',
-             'folder_type': 'trimmed_data', 'avg': False
-             },
-
-            {'file_name': '../../data/classification_data_Jeff503.txt',
-             'training_folder': 'Jeff_Set',
-             'folder_type': 'trimmed_data', 'avg': False
-             },
-            ]
-
-
-ld_folders = [{'training_folder': 'Training_Set_Tremor', 'folder_type': 'positive',
-              'data_type': 'tremor'},
-
-              {'training_folder': 'Training_Set_Prem', 'folder_type': 'positive',
-               'data_type': 'earthquake'},
-
-              {'training_folder': 'Training_Set_Prem', 'folder_type': 'negative',
-               'data_type': 'earthquake'}
-              ]
-
-
-# #
-# ds = QuakeDataSet(ld_files=ld_files, ld_folders=ld_folders, excerpt_len=40000)
-# print(len(ds.X), len(ds.X_users), len(ds.X_ids), len(ds.X_names), len(ds.Y))
-# save_file(ds, 'ds_large_dynamic_2')
 
 
 transform_and_save = False
@@ -73,6 +34,7 @@ train_mod = True
 
 J, Q = 8, 64
 excerpt_len = 20000
+exp_name = "Exp8"
 
 if transform_and_save:
 
@@ -103,7 +65,7 @@ if transform_and_save:
         torch.cuda.empty_cache()
         # print(torch.cuda.memory_summary(0))
 
-    save_file(combined_train, 'combined_train_exp5_J{}_Q{}'.format(J, Q))
+    save_file(combined_train, 'combined_train_{}_J{}_Q{}'.format(exp_name, J, Q))
 
     print("Starting test set: ")
     for index, data in enumerate(test_loader):
@@ -113,13 +75,13 @@ if transform_and_save:
                                'user': data['user'], 'sub_id': data['sub_id']})
         torch.cuda.empty_cache()
 
-    save_file(combined_test, 'combined_test_exp5_J{}_Q{}'.format(J, Q))
+    save_file(combined_test, 'combined_test_{}_J{}_Q{}'.format(exp_name, J, Q))
 
 
 if load_transformed:
     # Load file
-    transformed_train = load_file('combined_train_exp5_J{}_Q{}'.format(J, Q))
-    transformed_test = load_file('combined_test_exp5_J{}_Q{}'.format(J, Q))
+    transformed_train = load_file('combined_train_{}_J{}_Q{}'.format(exp_name, J, Q))
+    transformed_test = load_file('combined_test_{}_J{}_Q{}'.format(exp_name, J, Q))
     print(transformed_train[0]['data'][1].shape)
 
 
@@ -128,16 +90,20 @@ if train_mod:
     # Initialize the model
     model = ml.models.WavNet().to(device)
     # Load existing model to continue training
-    model_name = 'model_Exp5_29_09_2020-15_26_09_199.pt'
+    model_name = 'model_Exp6_01_10_2020-16_35_00_149.pt'
     model.load_state_dict(torch.load(SAVE_PATH / model_name))
     loss_func = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Initialize Tensorboard
-    exp_name = "Exp5"
-    exp_id = '{}_{}'.format(exp_name, datetime.now().strftime('%d_%m_%Y-%H_%M_%S'))
-    writer = SummaryWriter('runs/{}'.format(exp_id))
+    # # Initialize Tensorboard
+    # exp_id = '{}_{}'.format(exp_name, datetime.now().strftime('%d_%m_%Y-%H_%M_%S'))
+    # writer = SummaryWriter('runs/{}'.format(exp_id))
 
-    train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
-          optimizer=optimizer, train_set=transformed_train, test_set=transformed_test,
-          exp_id=exp_id, writer=writer,  save_freq=50, print_freq=20, test_freq=30)
+    # train(num_epochs=num_epochs, batch_size=batch_size, model=model, loss_func=loss_func,
+    #       optimizer=optimizer, train_set=transformed_train, test_set=transformed_test,
+    #       exp_id=exp_id, writer=writer,  save_freq=50, print_freq=20, test_freq=30)
+
+
+    conf_mat, acc, loss = test(model=model, test_set=transformed_train, loss_func=loss_func)
+    print(conf_mat)
+    print(acc, loss)
