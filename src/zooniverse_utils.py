@@ -9,6 +9,7 @@ import operator
 from constants import DATA_PATH, META_PATH
 from collections import defaultdict, Counter
 from datetime import datetime
+from src.ml.retirement.r_utils import map_users_to_index
 
 
 def get_subject_info(df_sub):
@@ -211,6 +212,63 @@ def extract_info_zooniverse(subjects, classifications, user_names=['suzanv'], re
                     f.write(info + '\n')
 
 
+def extract_info_zooniverse_anon(subjects, classifications, user_names=[], regions=[]):
+    """
+    Extract the time, region, station, channel and classification from .csv files downloaded from
+    Zooniverse. The extracted data is saved in a text file.
+    Each line of text file consists of the following:
+    Time_Stamp Region_Code Station_Code Channel Label
+    Example: 2018-01-10T02:51:31.000 AK SII BHZ Noise
+
+    Args:
+        subjects (str): Path to .csv file containing subjects (seismic file) info
+        classifications (str): Path to .csv file containing classifications done by Citizen
+        Scientists.
+        user_names (list): List of user names whose info is to be extracted
+        regions (list): If not empty, only info from the specified regions will be saved to file
+    """
+
+    df_sub = pd.read_csv(DATA_PATH / subjects)
+    df_class = pd.read_csv(DATA_PATH / classifications)
+    df_class = df_class[~df_class['user_name'].str.contains('not-logged-in')]
+    user_to_index = map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
+    # Create a mapping of subject_id -> time_stamp region station channel
+    subject_info = get_subject_info(df_sub)
+
+    # Filter the classifications based on the user_names list
+    if user_names:
+        df_class = df_class[df_class.user_name.isin(user_names)]
+        # Drop duplicate subject_ids
+        df_class = df_class.drop_duplicates(subset=['subject_ids'], keep='first')
+
+    f_name = 'classification_data_{}.txt'.format("all_users")
+    # Save the content to text file
+    with open(DATA_PATH / f_name, 'w') as f:
+        for index, row in df_class.iterrows():
+            meta = json.loads(row['annotations'])
+            sub_id = row['subject_ids']
+
+            # The len() > 2 constraint ensures we don't save practice problems
+            if sub_id in subject_info and len(subject_info[sub_id]) > 2:
+                if regions:
+                    # Only save if the subject id is part of the regions list
+                    if subject_info[sub_id][1] in regions:
+                        label = meta[0]['value']
+                        info = str(sub_id) + " " + str(user_to_index[row['user_name']]) + " " + \
+                               " " \
+                                                                                          "".join((
+                            subject_info[
+                                         sub_id])) + " " + label
+                        f.write(info + '\n')
+                else:
+                    label = meta[0]['value']
+                    info = str(sub_id) + " " + str(user_to_index[row['user_name']]) + " " + " " \
+                                                                                          "".join((
+                        subject_info[
+                                         sub_id])) + " " + label
+                    f.write(info + '\n')
+
+
 def compare_classifications(subjects, classifications, user_names):
     """
     Compare the classifications done by different users
@@ -262,9 +320,12 @@ def compare_classifications(subjects, classifications, user_names):
 
 
 if __name__ == '__main__':
-    extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
-                           subjects='earthquake-detective-subjects.csv',
-                           user_names=['suzanv'])
+    # extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
+    #                        subjects='earthquake-detective-subjects.csv',
+    #                        user_names=['suzanv'])
+
+    extract_info_zooniverse_anon(classifications='earthquake-detective-classifications.csv',
+                            subjects='earthquake-detective-subjects.csv')
 
     # compare_classifications(subjects='earthquake-detective-subjects.csv',
     #                         classifications='earthquake-detective-classifications.csv',

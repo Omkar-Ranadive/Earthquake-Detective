@@ -3,6 +3,7 @@ import pickle
 from constants import DATA_PATH
 import joblib
 
+
 def clean_event_id(event_id):
     """
     Clean the event id by replacing few characters with underscore. Makes it easier to save.
@@ -23,7 +24,7 @@ def clean_event_id(event_id):
 
 def generate_file_name_from_labels(file_name):
     """
-    Assumption: Labels are of the form: Time_stamp network station component label
+    Assumption: Labels are of the form: sub_id, user_id Time_stamp network station component label
     Args:
         file_name (str): Path to the file from which names are to be generated
 
@@ -84,55 +85,59 @@ def convert_to_seconds(val, t):
     return result
 
 
-def save_file(file, filename):
+def save_file(file, filename, path=DATA_PATH):
     """
     Save file in pickle format
     Args:
         file (any object): Can be any Python object. We would normally use this to save the
         processed Pytorch dataset
         filename (str): Name of the file
+        path (Path obj): Path to save file to
+
     """
-    with open(DATA_PATH / filename, 'wb') as f:
+    with open(path / filename, 'wb') as f:
         pickle.dump(file, f)
 
 
-def load_file(filename):
+def load_file(filename, path=DATA_PATH):
     """
     Load a pickle file
     Args:
         filename (str): Name of the file
+        path (Path obj): Path to load file from
 
     Returns (Python obj): Returns the loaded pickle file
-
     """
-    with open(DATA_PATH / filename, 'rb') as f:
+    with open(path / filename, 'rb') as f:
         file = pickle.load(f)
 
     return file
 
 
-def save_file_jl(file, filename):
+def save_file_jl(file, filename, path=DATA_PATH):
     """
       Use joblib to save the file instead. Works better for large numpy arrays
       Args:
           file (any object): Can be any Python object. We would normally use this to save the
           processed Pytorch dataset
           filename (str): Name of the file
+          path (Path obj): Path to save file to
       """
-    f = str(DATA_PATH / filename)
+    f = str(path / filename)
     joblib.dump(file, f)
 
 
-def load_file_jl(filename):
+def load_file_jl(filename, path=DATA_PATH):
     """
     Load a pickle file
     Args:
         filename (str): Name of the file
+        path (Path obj): Path to load file from
 
     Returns (Python obj): Returns the loaded pickle file
 
     """
-    f = str(DATA_PATH / filename)
+    f = str(path / filename)
     file = joblib.load(f)
 
     return file

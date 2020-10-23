@@ -6,7 +6,6 @@ from obspy import read
 import os
 import warnings
 from kymatio.numpy import Scattering1D
-from ml.retirement.r_utils import map_users_to_index
 import matplotlib.pyplot as plt
 from PIL import Image
 from pathlib import Path
@@ -34,7 +33,6 @@ class QuakeDataSet(Dataset):
         self.excerpt_len = excerpt_len
         self.mode = mode
         self.transforms = transforms
-        self.user_to_index = map_users_to_index(META_PATH / 'stats_users_12_09_2020-20_10_24.txt')
         self.avg = False
 
         if ld_files is not None:
@@ -115,18 +113,17 @@ class QuakeDataSet(Dataset):
             train_percent (float): Percentage of samples to include in the training set
             seed (bool): If true, same indices are produced everything for reproducibility
             users (list): If only data from specific users is required, it can be specified by
-            giving a list of user names
+            giving a list of user ids
 
         Returns (list): Training indices and testing indices
         """
 
         # Filter the data by list of users if specified
         if users:
-            user_indices = [-1]  # By default, all data from folders represented by user_id =
+            user_indices = [-1]  # By default, all data from folders represented by
             # -1 will be considered
-            for user in users:
-                if user in self.user_to_index:
-                    user_indices.append(self.user_to_index[user])
+            user_indices.extend(users)
+
             # Get the samples classified by users in user_indices
             indices_all = []
             for user_index in user_indices:
@@ -203,6 +200,12 @@ class QuakeDataSet(Dataset):
         # Set no filter to False to perform automatic anti aliasing
         st.resample(sampling_rate=desired_rate, no_filter=False)
 
+        return st
+
+    @staticmethod
+    def _process_data(st):
+        st.detrend('demean')
+        st.filter('bandpass', freqmin=2, freqmax=8, corners=4, zerophase=True)
         return st
 
     def modify_excerpt_len(self, new_len):
@@ -330,18 +333,20 @@ class QuakeDataSet(Dataset):
                     X.append([st1[0].data, st2[0].data, st3[0].data])
                     X_names.append(str(file_name / (file[0] + '.sac')))
                     X_ids.append(int(file[2]))
-                    X_users.append(self.user_to_index[file[3]])
+                    X_users.append(int(file[3]))
                     Y.append(label_dict[file[1]])
 
                 else:
                     # Warn users if some file is not found
-                    warnings.warn("File not found: {}".format(file[0]))
+                    # warnings.warn("File not found: {}".format(file[0]))
+                    pass
 
         print("Number of samples loaded: {}".format(len(Y)))
 
         return X, Y, X_names, X_ids, X_users, X_imgs
 
-    def _load_data_from_folder(self, training_folder, folder_type, data_type, load_img=False):
+    def _load_data_from_folder(self, training_folder, folder_type, data_type, load_img=False,
+                               process_data=False):
         """
         Function to load data directly from folder.
         Assumes the following folder structure:
@@ -360,6 +365,7 @@ class QuakeDataSet(Dataset):
             data_type (str): Can be 'earthquake' or 'tremor'
             load_img (bool): If set to true, plots are also loaded. Plots will be created and
             then loaded if they don't exist.
+            process_data (bool): If true, data is de-trended and bandpassed
 
        Returns (np arrays): Five arrays X and Y where X = training data, Y = training labels and
                             X_names = file name associated with the data in X, X_ids = subject
@@ -379,7 +385,6 @@ class QuakeDataSet(Dataset):
                     if folder_type == inner_folder:
                         # Get unique file names (ignore the components for now)
                         files = []
-
                         for file in os.listdir(folder_path / inner_folder):
                             if '.SAC' in file or '.sac' in file:
                                 # Remove component info (BHE,BHZ etc) and ".sac" before appending
@@ -399,6 +404,16 @@ class QuakeDataSet(Dataset):
                                 st1 = read(file_path_z)
                                 st2 = read(file_path_e)
                                 st3 = read(file_path_n)
+
+                                # Re-sample the data
+                                st1 = self._resample_data(st1)
+                                st2 = self._resample_data(st2)
+                                st3 = self._resample_data(st3)
+
+                                if process_data:
+                                    st1 = self._process_data(st1)
+                                    st2 = self._process_data(st2)
+                                    st3 = self._process_data(st3)
 
                                 if load_img:
                                     img_path_z = file_path_z[:-3] + '.png'
@@ -421,11 +436,6 @@ class QuakeDataSet(Dataset):
                                     img_n = self._process_image(img_n, crop=False)
 
                                     X_imgs.append([img_z, img_e, img_n])
-
-                                # Re-sample the data
-                                st1 = self._resample_data(st1)
-                                st2 = self._resample_data(st2)
-                                st3 = self._resample_data(st3)
 
                                 X.append([st1[0].data, st2[0].data, st3[0].data])
 

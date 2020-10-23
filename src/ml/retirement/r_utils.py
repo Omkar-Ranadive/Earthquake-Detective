@@ -1,8 +1,11 @@
+import sys
+sys.path.append('../../src/')
 from constants import DATA_PATH, META_PATH, n_classes, label_dict, index_to_label
 import pandas as pd
 import numpy as np
 import json
 from collections import defaultdict
+from utils import save_file
 
 
 def calculate_reliability_mat(golden_samples, user_stats, classifications):
@@ -67,7 +70,8 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
             Rel Dict will contain the following info: 
             Index 0 to n_classes = [class wise precision (TP/(TP + FP)), 
                                       class wise recall (TP/(TP+FN)), 
-                                      class wise accuracy = TP + TN / (all)] 
+                                      class wise accuracy = TP + TN / (all)
+                                      f_beta score] 
             
             Precision - Proportion of positive samples which were actually positive 
             Recall - Proportion of correctly labeled positive samples out of total +ve samples 
@@ -88,7 +92,19 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
             recall = tp/(tp + fn)
             acc = (tp + tn)/(tp + tn + fp + fn)
             f_beta = (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
-            rel_dict[user].append([precision, recall, acc, f_beta])
+            rel_dict[index].append([precision, recall, acc, f_beta])
+
+    # Set reliability of all gold users / clean data to 1
+    golden_users = ['Vivitang', 'suzanv']
+    # Find their index in user_names
+    golden_indices = [-1]
+    for user in golden_users:
+        golden_indices.append(user_names.index(user))
+
+    for i in golden_indices:
+        if i not in rel_dict:
+            for c_id in range(n_classes+1):
+                rel_dict[i].append([1.0, 1.0, 1.0, 1.0])
 
     for index, row in enumerate(rel_mat):
         cur_user = user_names[index]
@@ -96,9 +112,11 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
         print("Scores: ")
         for k, v in sorted(index_to_label.items()):
             print("Class: {} Precision: {}  Recall {} Accuracy {} F_Score {}"
-                  .format(v, rel_dict[cur_user][k][0], rel_dict[cur_user][k][1], rel_dict[
-                   cur_user][k][2], rel_dict[cur_user][k][3]))
+                  .format(v, rel_dict[index][k][0], rel_dict[index][k][1], rel_dict[
+                   index][k][2], rel_dict[index][k][3]))
         print("*"*50)
+
+    save_file(path=META_PATH, file=rel_dict, filename="rel_scores")
 
 
 def map_users_to_index(user_stats):
@@ -118,14 +136,21 @@ def map_users_to_index(user_stats):
             # Skip the headers
             if index > 0:
                 info = line.split()
-                user_to_index[info[0]] = index
+                user_to_index[info[0]] = index-1
 
     return user_to_index
 
 
 if __name__ == '__main__':
-    calculate_reliability_mat(golden_samples='Golden/golden_classified.txt',
-                              user_stats='stats_users_12_09_2020-20_10_24.txt',
-                              classifications='earthquake-detective-classifications.csv')
+    # calculate_reliability_mat(golden_samples='Golden/golden_classified.txt',
+    #                           user_stats='stats_users_12_09_2020-20_10_24.txt',
+    #                           classifications='earthquake-detective-classifications.csv')
 
-    # map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
+    a = map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
+    # counter = 0
+    # for k, v in sorted(a.items(), key=lambda  x: x[1]):
+    #     print(k, v)
+    #     if counter > 20:
+    #         break
+    #     counter += 1
+

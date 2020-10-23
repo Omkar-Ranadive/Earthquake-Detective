@@ -32,9 +32,12 @@ MANIFEST
 
 # Ignore the previous code files 
 src/Old_Code/
+src/Archived/
+src/experiments/Archived/
 
 # Ignore model logs
 src/experiments/runs/
 
 # List of .py files to ignore
 src/scratch.py
+

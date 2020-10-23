@@ -32,6 +32,15 @@ index_to_label = {0: 'Earthquake',
 folder_labels = {'earthquake': {'positive': 0, 'negative': 1},
                  'tremor': {'positive': 2, 'negative': 1}}
 
+
+metric_to_index = {
+    'precision': 0,
+    'recall': 1,
+    'accuracy': 2,
+    'f_beta': 3
+}
+
+
 # Number of classes (Currently, only considering Earthquake, Noise and Tremor)
 n_classes = 3
 

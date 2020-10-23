@@ -57,7 +57,7 @@ class WavNet(nn.Module):
         # x = self.pool1(x)
 
         if isinstance(batch_in, list):
-            x, transformed_x = batch_in[0], batch_in[1]
+            transformed_x,  x = batch_in[0], batch_in[1]
         else:
             transformed_x = batch_in
         transformed_x = transformed_x.view(-1, self.flatten_features(transformed_x))
@@ -271,3 +271,5 @@ if __name__ == '__main__':
     # model = WavImg(h=200, w=300)
     model = ImgNet(h=200, w=300)
     model([c1, img])
+    for param_name, param_value in model.named_parameters():
+        print(param_name, param_value.abs().sum())
