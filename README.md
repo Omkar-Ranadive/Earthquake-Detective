@@ -2,7 +2,7 @@
 Earthquake Detective is an online collabarative platform to classify seismograms. This repository connects the platform with a Machine Learning backend for automatic classification and detection of earthquakes and tremors. 
 <br>
 * Site: https://www.zooniverse.org/projects/vivitang/earthquake-detective
-* Paper: [TBD]
+* Paper: https://arxiv.org/abs/2011.04740
 
 ## Installation 
 * Download [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for your OS 
