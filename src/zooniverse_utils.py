@@ -320,48 +320,6 @@ def compare_classifications(subjects, classifications, user_names):
     print("Total: {}, Diff {}, Same {}".format(total, diff, same))
 
 
-def gen_subids_stats(classifications, sub_ids):
-    """
-    Pass a list of subject ids and generate statistics w.r.t those ids
-    Args:
-    classifications (str): Path to .csv file containing classifications done by Citizen
-    Scientists.
-    sub_ids (list): List of subject ids to analyze
-
-    Returns:
-    """
-
-    rel_scores = load_file(path=META_PATH, filename='rel_scores_v2')
-    # index_to_users = map_index_to_users(user_stats='stats_users_12_09_2020-20_10_24.txt')
-
-    users_to_index = map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
-
-    df_class = pd.read_csv(DATA_PATH / classifications)
-
-    # Remove users who haven't logged in
-    df_class = df_class[~df_class['user_name'].str.contains('not-logged-in')]
-
-    # Filter by subject ids
-    df_class = df_class[df_class.subject_ids.isin(sub_ids)]
-    # print(Counter(df_class['subject_ids']))
-    #
-    sub_stats = defaultdict(list)
-    for index, row in df_class.iterrows():
-        meta = json.loads(row['annotations'])
-        label = meta[0]['value']
-        label_in = label_dict[label]
-        sub_id = row['subject_ids']
-        user = row['user_name']
-        uin = users_to_index[user]
-        # print(label_in, uin)
-        #
-        # print(rel_scores[uin])
-        f_score = rel_scores[uin][label_in][-1]
-        sub_stats[sub_id].append((uin, label, f_score))
-
-    print(sub_stats)
-
-
 if __name__ == '__main__':
     # extract_info_zooniverse(classifications='earthquake-detective-classifications.csv',
     #                        subjects='earthquake-detective-subjects.csv',
@@ -384,14 +342,4 @@ if __name__ == '__main__':
 
 
     # Generate stats based on subject ids
-    sub_ids = []
-    with open(DATA_PATH / 'EQ_Vivian_Analysis' / 'dataset18.txt', 'r') as f:
-        for index, line in enumerate(f.readlines()):
-            # Don't consider the headers
-            if index > 2:
-                info = line.split(",")
-                # Select the sub_ids with 70%+ chance of being earthquakes
-                if float(info[5]) > 70:
-                    sub_ids.append(info[0])
-
-    gen_subids_stats(classifications='earthquake-detective-classifications.csv', sub_ids=sub_ids)
+    pass
