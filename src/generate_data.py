@@ -110,12 +110,19 @@ if __name__ == '__main__':
     # event_info, user_info = load_info_from_labels(path=DATA_PATH /
     #                                                    'classification_data_filtered.txt')
     #
-    # # print(event_info)
+    # print(event_info)
     # for event_id, stations in event_info.items():
     #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
     #                              min_magnitude=7, folder_name='User100', save_raw=False)
 
     # save_downloaded_sub_ids_info(event_info, user_info)
 
-    data_utils.download_data(event_id='', event_et=3600, stations=stations,
-                                 min_magnitude=7, folder_name='temp', save_raw=False)
+    """
+    Sumatra Earthquake 
+    """
+    eid = '2012/04/1108:39:31.4'
+    stats = [['UU', 'SRU', '', 'BHZ,BHN,BHE'], ['TA', 'H17A', '', 'BHZ,BHN,BHE'],
+             ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
+
+    data_utils.download_data(event_id=eid, event_et=3600, stations=stats,
+                                 min_magnitude=8.6, folder_name='BSSA', save_raw=False)

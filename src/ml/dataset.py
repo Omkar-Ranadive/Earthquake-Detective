@@ -14,13 +14,16 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class QuakeDataSet(Dataset):
-    def __init__(self, ld_files, ld_folders, excerpt_len, transforms=[], mode='train'):
+    def __init__(self, ld_files, ld_folders, ld_unlabeled, excerpt_len, transforms=[],
+                 mode='train'):
         """
         Args:
             ld_files (list): A list of dictionaries where the dictionary contains parameters for
                             _load_data func
             ld_folders (list): List of dictionaries where each dictionary contains parameters
                             for _load_data_from_folder func
+            ld_unlabeled (list) List of dictionaries where each dict contains params for
+                            _load_unlabeled func
             excerpt_len (int): Length of each trace in final training data. Each signal will be
                                 padded/trimmed to this len.
             transforms (list): A list of strings listing transforms to apply.
@@ -60,6 +63,19 @@ class QuakeDataSet(Dataset):
                 self.X_users.extend(len(y)*[-1])
                 if not x_imgs:
                     self.X_imgs.extend(len(y)*[-1])
+                else:
+                    self.X_imgs.extend(x_imgs)
+
+        if ld_unlabeled is not None:
+            for func_params in ld_unlabeled:
+                x, y, x_names, x_imgs = self._load_unlabeled(**func_params)
+                self.X.extend(x)
+                self.Y.extend(y)
+                self.X_names.extend(x_names)
+                self.X_ids.extend(len(y) * [-1])
+                self.X_users.extend(len(y) * [-1])
+                if not x_imgs:
+                    self.X_imgs.extend(len(y) * [-1])
                 else:
                     self.X_imgs.extend(x_imgs)
 
@@ -445,3 +461,78 @@ class QuakeDataSet(Dataset):
 
         print("Number of samples loaded: {}".format(len(Y)))
         return X, Y, X_names, X_imgs
+
+    def _load_unlabeled(self, folder_path, load_img=False, process_data=False, resample=False):
+        """
+        Function to load unlabeled data.
+        Assume that the folder_path is the top level folder and then processed_data will be
+        accessed to get the .sac data and plots folder will be accessed to get the images
+        Args:
+            folder_path (str): Path to top level folder
+            load_img (bool): Load the images along with the signal data
+            process_data (bool): Process data if true
+            resample (bool) If true, resample the data
+
+        Returns:
+
+        """
+
+        print("Loading data from folder {}".format(folder_path))
+        X, Y, X_names, X_imgs = [], [], [], []
+        folder = Path(folder_path)
+
+        sac_path = folder / 'processed_data'
+        img_path = folder / 'plots'
+
+        for file in os.listdir(sac_path):
+            # To avoid repeat of the same data, only choose file with BHZ in it
+            if 'BHZ' in file:
+                f_bhe = file.replace('BHZ', 'BHE')
+                f_bhn = file.replace('BHZ', 'BHN')
+                file_path_z = str(sac_path / file)
+                file_path_e = str(sac_path / f_bhe)
+                file_path_n = str(sac_path / f_bhn)
+                img_path_z = str(img_path / (file[:-3] + 'png'))
+                img_path_e = str(img_path / (f_bhe[:-3] + 'png'))
+                img_path_n = str(img_path / (f_bhn[:-3] + 'png'))
+
+                if os.path.exists(file_path_z) and os.path.exists(file_path_e) and os.path.exists(
+                        file_path_n):
+                    st1 = read(file_path_z)
+                    st2 = read(file_path_e)
+                    st3 = read(file_path_n)
+
+                    if load_img:
+                        # We are assuming that the images exist in case of EQ data
+                        # If not, check the data_utils gen_plots function and generate them
+                        # manually
+                        img_z = Image.open(img_path_z)
+                        img_e = Image.open(img_path_e)
+                        img_n = Image.open(img_path_n)
+
+                        # Process the images
+                        img_z = self._process_image(img_z, crop=True)
+                        img_e = self._process_image(img_e, crop=True)
+                        img_n = self._process_image(img_n, crop=True)
+
+                        X_imgs.append([img_z, img_e, img_n])
+
+                    # Re-sample the data
+                    if resample:
+                        st1 = self._resample_data(st1)
+                        st2 = self._resample_data(st2)
+                        st3 = self._resample_data(st3)
+
+                    X.append([st1[0].data, st2[0].data, st3[0].data])
+                    X_names.append(file_path_z)
+                    Y.append(-1)  # We don't care about the label, assign -1
+
+                else:
+                    # Warn users if some file is not found
+                    warnings.warn("File not found: {}".format(file))
+                    pass
+
+        print("Number of samples loaded: {}".format(len(Y)))
+
+        return X, Y, X_names, X_imgs
+

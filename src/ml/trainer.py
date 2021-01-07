@@ -174,26 +174,32 @@ def generate_model_log(model, model_name, sample_set, names, set='test'):
                 subject_ids = data['sub_id']
                 indices = data['index']
 
-                for i, probs in enumerate(output.cpu()):
+                if set == 'unlabeled':
+                    for i, probs in enumerate(output.cpu()):
+                        f.write("Prob(E/N/T) {}  P: {} Path: {}\n\n".format(probs,
+                            predicted_labels[i].item(), names[indices[i]]))
+                else:
+                    for i, probs in enumerate(output.cpu()):
 
-                    outcome = 'C' if predicted_labels[i].item() == true_labels[i].item() else 'I'
+                        outcome = 'C' if predicted_labels[i].item() == true_labels[i].item() else 'I'
 
-                    f.write("{} Prob(E/N/T): {} P: {}  T: {} UID: {} Path: {}\n\n".format(outcome,
-                        probs, predicted_labels[i].item(), true_labels[i].item(),
-                        users[i].item(), names[indices[i]]))
+                        f.write("{} Prob(E/N/T): {} P: {}  T: {} UID: {} Path: {}\n\n".format(outcome,
+                            probs, predicted_labels[i].item(), true_labels[i].item(),
+                            users[i].item(), names[indices[i]]))
 
-                f.write("--"*20 + "\n")
-                correct_mat = (predicted == batch_out).squeeze()
-                correct_count = torch.sum(correct_mat).item()
-                accuracies.append(correct_count / len(predicted))
-                conf_mat = confusion_matrix(y_true=batch_out.cpu().numpy(),
-                                            y_pred=predicted.cpu().numpy(), labels=range(n_classes))
-                combined_mat += conf_mat
+                    f.write("--"*20 + "\n")
+                    correct_mat = (predicted == batch_out).squeeze()
+                    correct_count = torch.sum(correct_mat).item()
+                    accuracies.append(correct_count / len(predicted))
+                    conf_mat = confusion_matrix(y_true=batch_out.cpu().numpy(),
+                                                y_pred=predicted.cpu().numpy(), labels=range(n_classes))
+                    combined_mat += conf_mat
 
-        f.write("Confusion Matrix: \n")
-        np.savetxt(f, combined_mat, fmt='%i')
+        if set != 'unlabeled':
+            f.write("Confusion Matrix: \n")
+            np.savetxt(f, combined_mat, fmt='%i')
 
-        f.write("\n Accuracy: {} ".format(np.mean(accuracies)))
+            f.write("\n Accuracy: {} ".format(np.mean(accuracies)))
 
         f.close()
 

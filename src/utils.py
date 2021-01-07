@@ -14,7 +14,7 @@ def clean_event_id(event_id):
 
     """
     # Replace '.' and '-' in event_id before saving
-    char_to_replace = ['.', '-', ':']
+    char_to_replace = ['.', '-', ':', '/']
     event_id_new = event_id
     for char in char_to_replace:
         event_id_new = event_id_new.replace(char, "_")
@@ -54,6 +54,24 @@ def generate_file_name_from_labels(file_name):
             file_label_dict[event_id].append([file_name, label, sub_id, user])
 
     return file_label_dict
+
+
+def rename_channel(channel):
+    """
+    Function to rename Bh1 -> BHN, BH2 -> BHE for consistency
+    Args:
+        channel (str): Channel code
+
+    Returns (str): Renamed channel
+
+    """
+
+    if channel == 'BH1':
+        return 'BHN'
+    elif channel == 'BH2':
+        return 'BHE'
+    else:
+        return channel
 
 
 def convert_to_seconds(val, t):

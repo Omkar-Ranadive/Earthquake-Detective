@@ -9,7 +9,7 @@ import os
 import constants
 from scipy.io import wavfile
 import numpy as np
-from utils import clean_event_id
+from utils import clean_event_id, rename_channel
 # This parameter will prevent matplotlib from throwing errors for plots with large data points
 mpl.rcParams['agg.path.chunksize'] = 10000
 
@@ -122,7 +122,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         if save_raw:
             for tr in st:
                 file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                                   tr.stats.channel, event_id_new))
+                                   rename_channel(tr.stats.channel), event_id_new))
                 file_path = raw_path / (file_id + ".sac")
                 tr.write(str(file_path), format='SAC')
 
@@ -215,7 +215,7 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
 
     for tr in st:
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            tr.stats.channel, event_id))
+                            rename_channel(tr.stats.channel), event_id))
         file_path = processed_path / (file_id + ".sac")
         tr.write(str(file_path), format='SAC')
 
@@ -266,7 +266,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
     for tr in st:
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            tr.stats.channel, event_id))
+                            rename_channel(tr.stats.channel), event_id))
         file_path = trimmed_path / (file_id + ".sac")
         tr.write(str(file_path), format='SAC')
 
@@ -304,7 +304,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         # Save the figure
         figure_path = folder_path / 'plots'
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            tr.stats.channel, event_id))
+                            rename_channel(tr.stats.channel), event_id))
         file_path = figure_path / (file_id + ".png")
 
         plt.savefig(file_path, dpi=300,  bbox_inches='tight', pad_inches=0)
@@ -370,7 +370,7 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
         audio_path = folder_path / 'audio'
         file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            tr.stats.channel, event_id, str(speed)))
+                            rename_channel(tr.stats.channel), event_id, str(speed)))
         file_path = audio_path / (file_id + ".mp3")
 
         wavfile.write(file_path, rate=int(new_sampling_rate), data=np.int32(scaled_sound))
