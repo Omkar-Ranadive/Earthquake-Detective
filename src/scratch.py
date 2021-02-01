@@ -1,4 +1,2 @@
-a = {"luffy", "Luffy", "muffy"}
-b  = {"Zoro", "luffy", "Nani"}
+import numpy as np
 
-print(set(a).difference(set(b)))

@@ -31,7 +31,7 @@ def filter_data(path, user_ids, name="filtered", dtype=[]):
                 f1.write(" ".join(info) + '\n')
 
 
-def load_info_from_labels(path, downloaded_info=""):
+def load_info_from_labels(path, downloaded_info="", limit=None):
     """
     Function to download data associated with labeled data from Earthquake Detective
     Assumption: Labels are of the form: Sub_Id UserID Time_stamp network station component label
@@ -40,6 +40,7 @@ def load_info_from_labels(path, downloaded_info=""):
         downloaded_info (str): Optionally, provide path to text file which contains subject ids
         Each line of downloaded_info file should only contain the subject id
         of files already downloaded so they can be skipped in the present run
+        limit (int): If provided, only samples = limit size will be returned
 
     Returns: Stations info
     """
@@ -61,10 +62,15 @@ def load_info_from_labels(path, downloaded_info=""):
             # being classified
             if info[0] not in subject_ids and info[-1] not in ('above', 'Event') and info[5] == \
                     'BHZ':
+
+                if limit and counter + 1 > limit:
+                    break
+
                 # Separate event id from station info
-                id_stat_dict[info[2]].append([info[3], info[4], "", info[5]+',BHN,BHE'])
-                counter += 1
+                id_stat_dict[info[2]].append([info[3], info[4], "", info[5] + ',BHN,BHE'])
                 user_data.append(info)
+
+                counter += 1
 
     print("Number of samples chosen to download: {}".format(counter))
     return id_stat_dict, user_data
@@ -103,6 +109,37 @@ def save_downloaded_info(id_dict, info):
                     f.write(data[0] + '\n')
 
 
+def load_station_list(file_path):
+    """
+    Assumed that each line in file is of the form:
+    Net Code, Stat Code, Loc code, Channels
+    Args:
+        file_path (str): Path to text file containing station info
+
+    Returns (list): Returns List of lists where each list is of the form
+                   [Net Code, Stat Code, Loc code, Channels]
+    """
+    stations = []
+    with open(file_path, 'r') as f:
+        for line in f.readlines():
+            info  = line.split()
+
+            if len(info) == 3:
+                if info[-1] == 'BHZ':
+                    info[-1] += ',BHN,BHE'
+                elif info[-1] == 'EHZ':
+                    info[-1] += ',EH1,EH2'
+                stations.append([info[0], info[1], "", info[2]])
+            else:
+                if info[-1] == 'BHZ':
+                    info[-1] += ',BH1,BH2'
+                elif info[-1] == 'EHZ':
+                    info[-1] += ',EH1,EH2'
+                stations.append([info[0], info[1], info[2], info[3]])
+
+    return stations
+
+
 if __name__ == '__main__':
     #
     # filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['15'], name='u15')
@@ -117,12 +154,54 @@ if __name__ == '__main__':
 
     # save_downloaded_sub_ids_info(event_info, user_info)
 
-    """
-    Sumatra Earthquake 
-    """
-    eid = '2012/04/1108:39:31.4'
-    stats = [['UU', 'SRU', '', 'BHZ,BHN,BHE'], ['TA', 'H17A', '', 'BHZ,BHN,BHE'],
-             ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
+    # """
+    # Sumatra Earthquake
+    # """
+    # eid = '2012/04/1108:39:31.4'
+    # # stats = [['UU', 'SRU', '', 'BHZ,BHN,BHE'], ['TA', 'H17A', '', 'BHZ,BHN,BHE'],
+    # #          ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
+    #
+    # stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
+    #
+    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats,
+    #                              min_magnitude=8.6, folder_name='BSSA', save_raw=False)
 
-    data_utils.download_data(event_id=eid, event_et=3600, stations=stats,
-                                 min_magnitude=8.6, folder_name='BSSA', save_raw=False)
+    #
+    filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['15'],
+                name='u15', dtype=('Earthquake'))
+
+    event_info, user_info = load_info_from_labels(path=DATA_PATH /
+                                                       'classification_data_u15.txt', limit=5)
+
+    """
+    # Downloading complete data without any splits
+    # """
+    #
+    # for event_id, stations in event_info.items():
+    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+    #                              min_magnitude=7, folder_name='Tremor_Complete_Samples',
+    #                              save_raw=False)
+
+    """
+    Downloading data split into two parts
+    """
+    # audio_params = {'surface_len': 1000.0, 'speed': 200}
+    # plot_params = {'surface_len': 1000.0}
+    #
+    # for event_id, stations in event_info.items():
+    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+    #                              min_magnitude=7, folder_name='Tremor_Samples_s2', save_raw=False,
+    #                              split=2, audio_params=audio_params, plot_params=plot_params)
+    #
+
+    """
+    Downloading data split into four parts 
+    """
+    audio_params = {'surface_len': 500.0, 'speed': 100}
+    plot_params = {'surface_len': 500.0}
+
+    for event_id, stations in event_info.items():
+        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+                                 min_magnitude=7, folder_name='EQ_Samples_s4', save_raw=False,
+                                 split=4, audio_params=audio_params, plot_params=plot_params)
+

@@ -52,7 +52,7 @@ def create_folders(event_id, folder_name="default_folder"):
 def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
                   event_et=3600, stat_client="IRIS", save_raw=True,
                   process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True,
-                  folder_name="default_folder"):
+                  folder_name="default_folder", split=1, audio_params=None, plot_params=None):
     """
     Download and save the raw data
     Args:
@@ -69,7 +69,11 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         gen_plot (bool): If true, plots are generated
         gen_audio (bool): If true, audio is generated from the waveforms
         folder_name (str): Name of the folder in which the data gets saved
-
+        split (int): A split > 1 specifies that the data needs to be broken down into that many
+                    parts. For example, if split = 2, the downloaded signal will be processed
+                    and saved into two different halves
+        audio_params (dict): Audio specific parameters to pass into gen_audio func
+        plot_params (dict): Plotting/trimming specific params to pass into gen_plot func
     """
     # Make sure the folders are created
     folder_path = create_folders(event_id, folder_name=folder_name)
@@ -132,12 +136,22 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
                               folder_name=folder_name)
 
         if gen_plot:
-            generate_plots(event_id=event_id, st=st, origin=origin, inv=inv,
-                           sampling_rate=sampling_rate,  folder_name=folder_name)
+            if plot_params:
+                generate_plots(event_id=event_id, st=st, origin=origin, inv=inv,
+                               sampling_rate=sampling_rate,  folder_name=folder_name,
+                               split=split, **plot_params)
+            else:
+                generate_plots(event_id=event_id, st=st, origin=origin, inv=inv,
+                               sampling_rate=sampling_rate, folder_name=folder_name, split=split)
 
         if gen_audio:
-            generate_audio(event_id=event_id, st=st, origin=origin, inv=inv,
-                           sampling_rate=sampling_rate,  folder_name=folder_name)
+            if audio_params:
+                generate_audio(event_id=event_id, st=st, origin=origin, inv=inv,
+                               sampling_rate=sampling_rate,  folder_name=folder_name,
+                               split=split, **audio_params)
+            else:
+                generate_audio(event_id=event_id, st=st, origin=origin, inv=inv,
+                               sampling_rate=sampling_rate, folder_name=folder_name, split=split)
 
 
 def download_data_direct(event_id, stations, min_magnitude=2.5, event_client="SCEDC",
@@ -223,7 +237,7 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
 
 
 def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
-                   folder_name="default_folder"):
+                   folder_name="default_folder", split=1):
     """
     Generate trimmed plots of the seismograms
     Args:
@@ -237,9 +251,20 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         surface_len (float): Surface window length in seconds which determines how long the
                              trimmed trace will be
         folder_name (str): Name of the folder in which the data gets saved
+        split (int): If > 1, data will be split into that many chunks
+
     """
     # Make sure the right folders are created
     folder_path = create_folders(event_id,  folder_name=folder_name)
+
+    # Replace '.' and '-' in event_id before saving
+    event_id = clean_event_id(event_id)
+
+    # Save the trimmed files
+    trimmed_path = folder_path / 'trimmed_data'
+
+    # Create the plots using matplotlib
+    fig, ax = plt.subplots()
 
     # Trim Seismograms
     for tr in st:
@@ -254,67 +279,64 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
         # Dist / 1000 converts it to distance in km.
         # Then dividing it by group vel (km/s) converts it to seconds
-        start = origin.time + (dist_origin_to_sta/1000)/group_vel
+        start = origin.time + (dist_origin_to_sta / 1000) / group_vel
         end = start + surface_len
-        tr.trim(starttime=start, endtime=end, pad=True, nearest_sample=False, fill_value=0)
+        for cut in range(split):
+            tr_cop = tr.copy()
+            tr_cop.trim(starttime=start, endtime=end, pad=True, nearest_sample=False, fill_value=0)
 
-    # Replace '.' and '-' in event_id before saving
-    event_id = clean_event_id(event_id)
+            #TODO No checks for end  > signal len exist - may cause errors without additional checks
+            start = end
+            end += surface_len
 
-    # Save the trimmed files
-    trimmed_path = folder_path / 'trimmed_data'
+            # Save the trimmed data
+            file_id = "_".join((tr_cop.stats.network, tr_cop.stats.station, tr_cop.stats.location,
+                                rename_channel(tr_cop.stats.channel), event_id, str(cut)))
+            file_path = trimmed_path / (file_id + ".sac")
+            tr_cop.write(str(file_path), format='SAC')
 
-    for tr in st:
-        file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            rename_channel(tr.stats.channel), event_id))
-        file_path = trimmed_path / (file_id + ".sac")
-        tr.write(str(file_path), format='SAC')
 
-    # Create the plots using matplotlib
-    fig, ax = plt.subplots()
+            # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
+            x_coordinates = tr_cop.times('matplotlib')
 
-    for tr in st:
-        # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
-        x_coordinates = tr.times('matplotlib')
+            ax.plot(tr_cop.times('matplotlib'), tr_cop.data, c='b')
+            # Format x axis in readable data format
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+            ax.xaxis_date()
+            # Limit the y axis to known local earthquake range.
+            ax.set_ylim(-1e-7, 1e-7)
+            # Trim any unnecessary space around x axis by limiting to its range
+            ax.set_xlim(left=np.min(x_coordinates), right=np.max(x_coordinates))
+            # Hide the y-axis values
+            ax.get_yaxis().set_ticks([])
 
-        ax.plot(tr.times('matplotlib'), tr.data, c='b')
-        # Format x axis in readable data format
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        ax.xaxis_date()
-        # Limit the y axis to known local earthquake range.
-        ax.set_ylim(-1e-7, 1e-7)
-        # Trim any unnecessary space around x axis by limiting to its range
-        ax.set_xlim(left=np.min(x_coordinates), right=np.max(x_coordinates))
-        # Hide the y-axis values
-        ax.get_yaxis().set_ticks([])
+            ax.set_xlabel('Time (UTC)')
 
-        ax.set_xlabel('Time (UTC)')
+            # Set the axis locators (doesn't affect the data values, only makes the plot look better)
+            ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=5))
+            ax.xaxis.set_minor_locator(mdates.MinuteLocator(interval=1))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+            fig.autofmt_xdate()
+            # Rotate the data labels for a tight fit
+            ax.xaxis.set_tick_params(rotation=70)
 
-        # Set the axis locators (doesn't affect the data values, only makes the plot look better)
-        ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=5))
-        ax.xaxis.set_minor_locator(mdates.MinuteLocator(interval=1))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        fig.autofmt_xdate()
-        # Rotate the data labels for a tight fit
-        ax.xaxis.set_tick_params(rotation=70)
+            # Cut out unnecessary empty space from figure
+            plt.subplots_adjust(left=0.001, right=0.999, top=1.0, bottom=0.35)
 
-        # Cut out unnecessary empty space from figure
-        plt.subplots_adjust(left=0.001, right=0.999, top=1.0, bottom=0.35)
+            # Save the figure
+            figure_path = folder_path / 'plots'
+            file_id = "_".join((tr_cop.stats.network, tr_cop.stats.station, tr_cop.stats.location,
+                                rename_channel(tr_cop.stats.channel), event_id, str(cut)))
+            file_path = figure_path / (file_id + ".png")
 
-        # Save the figure
-        figure_path = folder_path / 'plots'
-        file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            rename_channel(tr.stats.channel), event_id))
-        file_path = figure_path / (file_id + ".png")
-
-        plt.savefig(file_path, dpi=300,  bbox_inches='tight', pad_inches=0)
-        plt.cla()
+            plt.savefig(file_path, dpi=300, bbox_inches='tight', pad_inches=0)
+            plt.cla()
 
     plt.close(fig)  # Clear memory
 
 
 def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
-                   speed=400, damping=2e-8, folder_name="default_folder"):
+                   speed=400, damping=2e-8, folder_name="default_folder", split=1):
     """
     Convert waveforms to audible sounds
     Args:
@@ -333,12 +355,16 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         damping (float): Amount by which to damp the sound. If damping is larger,
                         audio amplitude will be smaller. If lower, amplitude will be larger.
         folder_name (str): Name of the folder in which the data gets saved
+        split (int): If > 1, data will be split into that many chunks
     """
     # Make sure folders are created
     folder_path = create_folders(event_id,  folder_name=folder_name)
 
     # Apply band-pass filter to data stream
     st.filter('bandpass', freqmin=2.0, freqmax=8.0, zerophase=True)
+
+    # Clean the event-id and generate the file-id
+    event_id = clean_event_id(event_id)
 
     # Trim Seismograms
     for tr in st:
@@ -355,23 +381,28 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         # Then dividing it by group vel (km/s) converts it to seconds
         start = origin.time + (dist_origin_to_sta / 1000) / group_vel
         end = start + surface_len
-        tr.trim(starttime=start, endtime=end, pad=True, nearest_sample=False, fill_value=0)
-        tr.taper(max_percentage=None, type='hann', max_length=1.0, side='both')
+        tr_cop = tr.copy()
 
-        # Calculate the sampling rate
-        new_sampling_rate = speed * sampling_rate
-        duration = tr.stats.npts/new_sampling_rate
+        for cut in range(split):
+            tr_cop = tr.copy()
+            tr_cop.trim(starttime=start, endtime=end, pad=True, nearest_sample=False, fill_value=0)
+            tr_cop.taper(max_percentage=None, type='hann', max_length=1.0, side='both')
 
-        # Scale the sound w.r.t arc tangent curve
-        scaled_sound = (2**31)*np.arctan(tr.data/damping)*2/np.pi
+            # Calculate the sampling rate
+            new_sampling_rate = speed * sampling_rate
+            duration = tr_cop.stats.npts/new_sampling_rate
 
-        # Clean the event-id and generate the file-id
-        event_id = clean_event_id(event_id)
+            # Scale the sound w.r.t arc tangent curve
+            scaled_sound = (2**31)*np.arctan(tr_cop.data/damping)*2/np.pi
 
-        audio_path = folder_path / 'audio'
-        file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            rename_channel(tr.stats.channel), event_id, str(speed)))
-        file_path = audio_path / (file_id + ".mp3")
+            audio_path = folder_path / 'audio'
+            file_id = "_".join((tr_cop.stats.network, tr_cop.stats.station, tr_cop.stats.location,
+                                rename_channel(tr_cop.stats.channel), event_id, str(cut),
+                                str(speed)))
+            file_path = audio_path / (file_id + ".mp3")
 
-        wavfile.write(file_path, rate=int(new_sampling_rate), data=np.int32(scaled_sound))
+            wavfile.write(file_path, rate=int(new_sampling_rate), data=np.int32(scaled_sound))
 
+            #TODO No checks for end  > signal len exist - may cause errors without additional checks
+            start = end
+            end += surface_len
