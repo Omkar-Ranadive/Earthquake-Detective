@@ -10,6 +10,7 @@ from src.ml.retirement.r_utils import map_users_to_index, map_index_to_users
 from utils import load_file
 import os
 import numpy as np
+from datetime import datetime
 
 
 def extract_sub_ids(file, naive=False, label_of_interest=0):
@@ -76,12 +77,51 @@ def selection_criteria_1(users, label_of_interest):
         return 0
 
 
-def select_sub_ids(sub_ids, classifications, label_of_interest):
+def selection_criteria_2(users, label_of_interest):
+    """
+    Select the subject id if the following criteria is met:
+    If num_votes >= 4 and <= 5, agreement = 1.0
+    if num_votes >= 6 and <= 7, agreement >= 0.8
+    if num_votes >= 8 and <= 10, agreement >= 0.7
+
+
+    Args:
+        users (list): List of users where each element is a tuple of the form (uid, ulabel,
+        f1 score)
+        label_of_interest (int): Label under consideration (left hand summation of formula)
+
+    Returns (int): 1 = select the subject id, 0 = don't select
+    """
+    total_votes = 0
+    num_votes = 0
+    for user in users:
+        uid, ulabel, f1_score = user
+
+        if ulabel == label_of_interest:
+            num_votes += 1
+
+        total_votes += 1
+
+        agreement = num_votes/total_votes
+
+        if 4 <= num_votes <= 5 and agreement >= 1.0:
+            return 1
+        elif 6 <= num_votes <= 7 and agreement >= 0.8:
+            return 1
+        elif 8 <= num_votes <= 10 and agreement >= 0.7:
+            return 1
+
+        #TODO  What if votes > 10 and agreement < threshold?
+
+    return 0
+
+
+def select_sub_ids(sub_ids, classifications, label_of_interest, criteria):
 
     sub_stats = gen_subids_stats(sub_ids, classifications)
     selected_ids = []
     for sub, users in sub_stats.items():
-        out = selection_criteria_1(users, label_of_interest=label_of_interest)
+        out = criteria(users, label_of_interest=label_of_interest)
 
         if out == 1:
             selected_ids.append(int(sub))
@@ -138,44 +178,76 @@ def gen_subids_stats(sub_ids, classifications):
     return sub_stats
 
 
-if __name__ == '__main__':
+def compare_criterias(criterias, label_of_interest):
+    """
+     Selecting samples based on reliability thresholds
 
+     Args:
+         criterias (list): List of criterias (functions) to compare
+
+     Returns:
+         Saves comparision in a file
     """
-    Selecting samples based on reliability thresholds 
-    """
+
     folder = DATA_PATH / 'EQ_Vivian_Analysis'
     all_ids = []
-    label_of_interest = 2
+    save_folder = 'Results_{}'.format(datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p"))
+
     for file in os.listdir(folder):
         if not os.path.isdir(folder / file):
+            print("-"*20)
             print("Processing {}".format(file))
             all_ids = extract_sub_ids(folder / file)
-            selected_ids = select_sub_ids(all_ids,
-                           classifications='earthquake-detective-classifications.csv',
-                           label_of_interest=label_of_interest)
+            selected_ids_list = []
+            for index, criteria in enumerate(criterias):
+                print("Running criteria: {}".format(index+1))
+                selected_ids = select_sub_ids(all_ids,
+                                              classifications='earthquake-detective-classifications.csv',
+                                              label_of_interest=label_of_interest, criteria=criteria)
+
+                selected_ids_list.append(selected_ids)
+
             # For comparison, also select them naively
-            naive_ids = extract_sub_ids(folder/file, naive=True, label_of_interest=label_of_interest)
+            naive_ids = extract_sub_ids(folder / file, naive=True,
+                                        label_of_interest=label_of_interest)
             # print(selected_ids)
             # print(naive_ids)
             new_file_name = file[:-3] + '_result_' + index_to_label[label_of_interest] + '.txt'
-            with open(folder / 'Results_Criteria1' / new_file_name, 'w') as f:
-                f.write("Criteria1: Selected {} ids out of {}\n".format(len(selected_ids), len(all_ids)))
-                print("Naive: Selected {} ids out of {}".format(len(naive_ids), len(all_ids)))
-                f.write("Naive: Selected {} ids out of {}\n".format(len(naive_ids), len(all_ids)))
-                common_ids = set(selected_ids).intersection(set(naive_ids))
-                diff_ids = set(selected_ids).difference(set(naive_ids))
-                print("{} ids were selected in common".format(len(common_ids)))
-                f.write("{} ids were selected in common \n".format(len(common_ids)))
-                print("*"*20)
 
-                # Save different ids to file
-                f.write("New selected ids are as follows: \n")
-                for nid in diff_ids:
-                    f.write(str(nid) + '\n')
+            if not os.path.exists(folder / save_folder):
+                os.mkdir(folder / save_folder)
 
-                # Save common ids to file
-                f.write("The common ids are as follows: \n")
-                for cid in common_ids:
-                    f.write(str(cid) + '\n')
+            with open(folder / save_folder / new_file_name, 'w') as f:
+                for index, selected_ids in enumerate(selected_ids_list):
+                    f.write("*"*15 + '\n')
+                    print("*"*15)
+                    f.write("Criteria {} \n".format(index+1))
+                    f.write("Criteria {} : Selected {} ids out of {}\n".format(index+1, len(
+                         selected_ids), len(all_ids)))
+
+                    print("Naive: Selected {} ids out of {}".format(len(naive_ids), len(all_ids)))
+                    f.write("Naive: Selected {} ids out of {}\n".format(len(naive_ids), len(all_ids)))
+
+                    common_ids = set(selected_ids).intersection(set(naive_ids))
+                    diff_ids = set(selected_ids).difference(set(naive_ids))
+
+                    print("{} ids were selected in common with criteria {}".format(len(
+                        common_ids), index+1))
+                    f.write("{} ids were selected in common with critera {}\n".format(len(
+                        common_ids), index+1))
+
+                    # Save different ids to file
+                    f.write("New selected ids are as follows: \n")
+                    for nid in diff_ids:
+                        f.write(str(nid) + '\n')
+
+                    # Save common ids to file
+                    f.write("The common ids are as follows: \n")
+                    for cid in common_ids:
+                        f.write(str(cid) + '\n')
 
 
+if __name__ == '__main__':
+
+    criterias = [selection_criteria_1, selection_criteria_2]
+    compare_criterias(criterias=criterias, label_of_interest=2)

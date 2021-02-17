@@ -50,7 +50,7 @@ def create_folders(event_id, folder_name="default_folder"):
 
 
 def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
-                  event_et=3600, stat_client="IRIS", save_raw=True,
+                  event_et=3600, stat_client="IRIS", save_raw=True, save_processed=True,
                   process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True,
                   folder_name="default_folder", split=1, audio_params=None, plot_params=None):
     """
@@ -64,6 +64,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         event_et (int): Specifies how long the event range should be from start time (in seconds)
         stat_client (str): Client to use for retrieving waveforms and inventory info
         save_raw (bool): If true, raw data will also be saved (takes a lot of space)
+        save_processed (bool): if true, processed (untrimmed data) will be save (space heavy)
         process_d (bool): If true, the raw data is also processed
         sampling_rate (int): Sampling rate in Hz
         gen_plot (bool): If true, plots are generated
@@ -109,13 +110,14 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
                                              attach_response=True)
             except FDSNException:
                 print("Failed to download waveform information for {} {}".format(net, sta))
-        print("Seismograms trimmed")
+
         # Check for split-streams and remove them
         # These are basically corrupt streams with discontinuities between them
         for tr in st:
             if abs(start_time - tr.stats.starttime) > 1 or abs(end_time - tr.stats.endtime) > 1:
                 st.remove(tr)
 
+        print("Seismograms downloaded")
         #  Save the raw data
         raw_path = folder_path / 'raw_data'
 
@@ -133,7 +135,7 @@ def download_data(event_id, stations, min_magnitude=7, event_client="USGS",
         # Process the seismograms if process_d flag = True
         if process_d:
             st = process_data(event_id=event_id, st=st, sampling_rate=sampling_rate,
-                              folder_name=folder_name)
+                              folder_name=folder_name, save_processed=save_processed)
 
         if gen_plot:
             if plot_params:
@@ -194,7 +196,7 @@ def download_data_direct(event_id, stations, min_magnitude=2.5, event_client="SC
 
 
 def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_level=100,
-                 folder_name="default_folder"):
+                 folder_name="default_folder", save_processed=True):
     """
     Function to process the raw data stream
     Args:
@@ -210,6 +212,7 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
         st (Obspy Stream obj): Returns the processed stream object
     """
 
+    print("Processing seismograms")
     # Make sure the right folders are created
     folder_path = create_folders(event_id,  folder_name=folder_name)
 
@@ -227,11 +230,12 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
     # Save the files
     processed_path = folder_path / 'processed_data'
 
-    for tr in st:
-        file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
-                            rename_channel(tr.stats.channel), event_id))
-        file_path = processed_path / (file_id + ".sac")
-        tr.write(str(file_path), format='SAC')
+    if save_processed:
+        for tr in st:
+            file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
+                                rename_channel(tr.stats.channel), event_id))
+            file_path = processed_path / (file_id + ".sac")
+            tr.write(str(file_path), format='SAC')
 
     return st
 
@@ -254,6 +258,8 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         split (int): If > 1, data will be split into that many chunks
 
     """
+    print("Generating plots")
+
     # Make sure the right folders are created
     folder_path = create_folders(event_id,  folder_name=folder_name)
 
@@ -263,11 +269,11 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
     # Save the trimmed files
     trimmed_path = folder_path / 'trimmed_data'
 
-    # Create the plots using matplotlib
-    fig, ax = plt.subplots()
-
     # Trim Seismograms
-    for tr in st:
+    for index, tr in enumerate(st):
+        if index % 50 == 0:
+            print("Processed {} seismograms".format(index+1))
+
         coordinates = inv.get_coordinates(".".join((tr.stats.network, tr.stats.station,
                                                     tr.stats.location, tr.stats.channel)),
                                           datetime=origin.time)
@@ -295,6 +301,8 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
             file_path = trimmed_path / (file_id + ".sac")
             tr_cop.write(str(file_path), format='SAC')
 
+            # Create the plots using matplotlib
+            fig, ax = plt.subplots()
 
             # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
             x_coordinates = tr_cop.times('matplotlib')
@@ -331,8 +339,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
             plt.savefig(file_path, dpi=300, bbox_inches='tight', pad_inches=0)
             plt.cla()
-
-    plt.close(fig)  # Clear memory
+            plt.close(fig)  # Clear memory
 
 
 def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
@@ -357,6 +364,9 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         folder_name (str): Name of the folder in which the data gets saved
         split (int): If > 1, data will be split into that many chunks
     """
+
+    print("Generating audio")
+
     # Make sure folders are created
     folder_path = create_folders(event_id,  folder_name=folder_name)
 
@@ -367,7 +377,11 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
     event_id = clean_event_id(event_id)
 
     # Trim Seismograms
-    for tr in st:
+    for index, tr in enumerate(st):
+
+        if index % 50 == 0:
+            print("Processed {} seismograms".format(index+1))
+
         coordinates = inv.get_coordinates(".".join((tr.stats.network, tr.stats.station,
                                                     tr.stats.location, tr.stats.channel)),
                                           datetime=origin.time)
@@ -383,14 +397,16 @@ def generate_audio(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         end = start + surface_len
         tr_cop = tr.copy()
 
+        # Calculate the sampling rate
+        new_sampling_rate = speed * sampling_rate
+
         for cut in range(split):
             tr_cop = tr.copy()
             tr_cop.trim(starttime=start, endtime=end, pad=True, nearest_sample=False, fill_value=0)
             tr_cop.taper(max_percentage=None, type='hann', max_length=1.0, side='both')
 
-            # Calculate the sampling rate
-            new_sampling_rate = speed * sampling_rate
-            duration = tr_cop.stats.npts/new_sampling_rate
+
+            # duration = tr_cop.stats.npts/new_sampling_rate
 
             # Scale the sound w.r.t arc tangent curve
             scaled_sound = (2**31)*np.arctan(tr_cop.data/damping)*2/np.pi

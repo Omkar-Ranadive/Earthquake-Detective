@@ -154,21 +154,30 @@ if __name__ == '__main__':
 
     # save_downloaded_sub_ids_info(event_info, user_info)
 
-    # """
-    # Sumatra Earthquake
-    # """
+    """
+    Sumatra Earthquake
+    """
     # eid = '2012/04/1108:39:31.4'
     # # stats = [['UU', 'SRU', '', 'BHZ,BHN,BHE'], ['TA', 'H17A', '', 'BHZ,BHN,BHE'],
     # #          ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
     #
     # stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
     #
-    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats,
-    #                              min_magnitude=8.6, folder_name='BSSA', save_raw=False)
+    # # print(len(stats))
+    # # print(stats[:250])
+    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[500:750],
+    #                              min_magnitude=8.6, folder_name='BSSA', save_raw=False,
+    #                          save_processed=False)
 
+
+
+
+    """
+    Split data testing 
+    """
     #
     filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['15'],
-                name='u15', dtype=('Earthquake'))
+                name='u15', dtype=('Tremor'))
 
     event_info, user_info = load_info_from_labels(path=DATA_PATH /
                                                        'classification_data_u15.txt', limit=5)
@@ -182,26 +191,30 @@ if __name__ == '__main__':
     #                              min_magnitude=7, folder_name='Tremor_Complete_Samples',
     #                              save_raw=False)
 
-    """
-    Downloading data split into two parts
-    """
-    # audio_params = {'surface_len': 1000.0, 'speed': 200}
+    # """
+    # Downloading data split into two parts
+    # """
+    # audio_params = {'surface_len': 1000.0}
     # plot_params = {'surface_len': 1000.0}
     #
     # for event_id, stations in event_info.items():
     #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-    #                              min_magnitude=7, folder_name='Tremor_Samples_s2', save_raw=False,
+    #                              min_magnitude=7, folder_name='Noise_Samples_s2_s400',
+    #                              save_raw=False,
     #                              split=2, audio_params=audio_params, plot_params=plot_params)
-    #
+
 
     """
     Downloading data split into four parts 
     """
-    audio_params = {'surface_len': 500.0, 'speed': 100}
+    audio_params = {'surface_len': 500.0}
     plot_params = {'surface_len': 500.0}
 
     for event_id, stations in event_info.items():
         data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-                                 min_magnitude=7, folder_name='EQ_Samples_s4', save_raw=False,
+                                 min_magnitude=7, folder_name='Tremor_Samples_s4_s400',
+                                 save_raw=False,
                                  split=4, audio_params=audio_params, plot_params=plot_params)
+
+
 
