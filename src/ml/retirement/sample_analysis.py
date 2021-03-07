@@ -250,4 +250,4 @@ def compare_criterias(criterias, label_of_interest):
 if __name__ == '__main__':
 
     criterias = [selection_criteria_1, selection_criteria_2]
-    compare_criterias(criterias=criterias, label_of_interest=2)
+    compare_criterias(criterias=criterias, label_of_interest=0)

@@ -75,6 +75,7 @@ python experiment{EXP_ID}.py
 * generate_data.py - Use this file to download data over arbitary time windows 
 * utils.py - Contains generic utility functions which are used throughout the project 
 * server_utils.py - Contains functions to upload data to Zooniverse 
+* zooniverse_utils.py - Contains functions to process and analyze the data downloaded from Zooniverse 
 * constants.py - Contains constants used throughout the project  
 * visualizer.py - Contains functions to visualize seismic data 
 
@@ -84,6 +85,10 @@ python experiment{EXP_ID}.py
 * trainer.py - A generic code to train/test different models defined in models.py 
 * wavelet.py - Contains function to perform wavelet scattering transform 
 * custom_loss.py - Custom loss functions to account for reliability scores 
+
+### src/ml/retirement 
+* r_utils.py - Contains functions to calculate reliability scores 
+* sample_analysis.py - Contains functions to select and analyze samples based on different selection criteria's 
 
 ### src/experiments 
 Contains various experiments performed. View experiment files for more details. 

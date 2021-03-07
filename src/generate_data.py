@@ -142,11 +142,12 @@ def load_station_list(file_path):
 
 if __name__ == '__main__':
     #
-    # filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['15'], name='u15')
+    # filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['100'],
+    #             name='u100')
     #
     # event_info, user_info = load_info_from_labels(path=DATA_PATH /
     #                                                    'classification_data_filtered.txt')
-    #
+
     # print(event_info)
     # for event_id, stations in event_info.items():
     #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
@@ -176,11 +177,13 @@ if __name__ == '__main__':
     Split data testing 
     """
     #
-    filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['15'],
-                name='u15', dtype=('Tremor'))
+    filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['100'],
+                name='u100', dtype=('Tremor'))
 
     event_info, user_info = load_info_from_labels(path=DATA_PATH /
-                                                       'classification_data_u15.txt', limit=5)
+                                                       'classification_data_u100.txt', limit=5)
+
+
 
     """
     # Downloading complete data without any splits
@@ -194,25 +197,25 @@ if __name__ == '__main__':
     # """
     # Downloading data split into two parts
     # """
-    # audio_params = {'surface_len': 1000.0}
-    # plot_params = {'surface_len': 1000.0}
-    #
-    # for event_id, stations in event_info.items():
-    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-    #                              min_magnitude=7, folder_name='Noise_Samples_s2_s400',
-    #                              save_raw=False,
-    #                              split=2, audio_params=audio_params, plot_params=plot_params)
+    audio_params = {'surface_len': 1000.0, 'damping': 4e-8}
+    plot_params = {'surface_len': 1000.0}
+
+    for event_id, stations in event_info.items():
+        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+                                 min_magnitude=7, folder_name='Tremor_Samples_s2_d4e',
+                                 save_raw=False,
+                                 split=2, audio_params=audio_params, plot_params=plot_params)
 
 
     """
     Downloading data split into four parts 
     """
-    audio_params = {'surface_len': 500.0}
+    audio_params = {'surface_len': 500.0, 'damping': 4e-8}
     plot_params = {'surface_len': 500.0}
-
+    #
     for event_id, stations in event_info.items():
         data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-                                 min_magnitude=7, folder_name='Tremor_Samples_s4_s400',
+                                 min_magnitude=7, folder_name='Tremor_Samples_s4_d4e',
                                  save_raw=False,
                                  split=4, audio_params=audio_params, plot_params=plot_params)
 
