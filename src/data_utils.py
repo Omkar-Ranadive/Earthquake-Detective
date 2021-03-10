@@ -241,7 +241,7 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
 
 
 def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
-                   folder_name="default_folder", split=1):
+                   folder_name="default_folder", split=1, dpi=300):
     """
     Generate trimmed plots of the seismograms
     Args:
@@ -256,6 +256,8 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                              trimmed trace will be
         folder_name (str): Name of the folder in which the data gets saved
         split (int): If > 1, data will be split into that many chunks
+        dpi (int): The dpi controls the width, height of image. Dpi = 300 will save an image of
+                   size 1930x1211
 
     """
     print("Generating plots")
@@ -337,7 +339,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                                 rename_channel(tr_cop.stats.channel), event_id, str(cut)))
             file_path = figure_path / (file_id + ".png")
 
-            plt.savefig(file_path, dpi=300, bbox_inches='tight', pad_inches=0)
+            plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
             plt.cla()
             plt.close(fig)  # Clear memory
 

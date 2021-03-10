@@ -4,42 +4,55 @@ from panoptes_client import Panoptes, Project, SubjectSet, Subject
 from constants import DATA_PATH
 import os
 from utils import clean_event_id
-import datetime
+from datetime import datetime
 
 
-def create_manifest(event_id):
+def create_manifest(event_id, path):
     """
     Create a .csv file mapping different files types of same data
     Args:
         event_id (str): Ideally should be time stamp YYYY-MM-DDTHH:MM:SS.000
+        path (str): Path to folder
     """
     # Load the required files and sort them to ensure correct mapping
     event_id = clean_event_id(event_id)
-    audio_files = sorted(os.listdir(DATA_PATH / event_id / 'audio'))
-    image_files = sorted(os.listdir(DATA_PATH / event_id / 'plots'))
+    audio_files = sorted(os.listdir(path / event_id / 'audio'))
+    image_files = sorted(os.listdir(path / event_id / 'plots'))
 
     # Ensure number of files are same in both directories
     assert len(audio_files) == len(image_files), "Error: No. of audio files differ from no. of " \
                                                  "image files"
 
+    # Only upload the BHZ channels
+    filtered_audio = [af for af in audio_files if 'BHZ' in af]
+    filtered_imgs = [imgf for imgf in image_files if 'BHZ' in imgf]
+
+    # Check if filtered images and audio have equal number of entries
+    assert len(filtered_audio) == len(filtered_imgs), "Error: No. of audio files differ from no. of " \
+                                                 "image files"
+
     # Convert to dataframe and save
-    df = pd.DataFrame(list(zip(image_files, audio_files)), columns=["!image_name", "!audio_name"])
+    df = pd.DataFrame(list(zip(filtered_imgs, filtered_audio)), columns=["!image_name", "!audio_name"])
     df.index.name = "subject_id"
+    filename = 'manifest_{}.csv'.format(datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p"))
+    df.to_csv(str(path / event_id / filename))
 
-    df.to_csv(DATA_PATH / event_id / 'manifest.csv')
 
-
-def upload_subject_set(event_id):
+def upload_subject_set(event_id, path, manifest):
     """
+    NOTE: This function only runs on Python terminal, don't use Pycharm's console (due to
+    getpass module)
+
     Upload the data to Zooniverse platform
     Args:
         event_id (str): Ideally should be time stamp YYYY-MM-DDTHH:MM:SS.000
-
+        path (str): Path to
+        manifest (str): The name of manifest (.csv) file created using creat_manifest func
     """
     event_id = clean_event_id(event_id)
-    folder_path = DATA_PATH / event_id
+    folder_path = path / event_id
     # Get user credentials
-    username = input('Username (Zooniverse):')
+    username = input('Username (Zooniverse): ')
     password = getpass.getpass("Password: ")
     # Connect to Zooniverse
     Panoptes.connect(username=username, password=password)
@@ -55,14 +68,14 @@ def upload_subject_set(event_id):
     reply = int(input())
 
     if reply == 1:
-        set_name = input('Enter subject set name (must be unique)')
+        set_name = input('Enter subject set name (must be unique): ')
         subject_set.display_name = set_name
         subject_set.save()
     elif reply == 2:
-        set_id = input("Enter subject set ID")
+        set_id = input("Enter subject set ID: ")
         subject_set = SubjectSet.find(set_id)
 
-    df = pd.read_csv(folder_path / 'manifest.csv')
+    df = pd.read_csv(folder_path / manifest)
     subject_metadata = {}
 
     # Convert pandas dataframe to dictionary format suitable for subject metadata
@@ -70,13 +83,15 @@ def upload_subject_set(event_id):
         file_name = row['!image_name'].split('.')[0]
         subject_metadata[file_name] = {'!audio_name': row['!audio_name'],
                                        '!image_name': row['!image_name'],
-                                       '#time_generated': str(datetime.datetime.now())}
+                                       '#time_generated': str(datetime.now())}
 
     new_subjects = []
 
     # Upload the files and metadata to Zooniverse
+    counter = 0
     for filename, metadata in subject_metadata.items():
         subject = Subject()
+        counter += 1
 
         subject.links.project = project
         # Give local file path to upload
@@ -87,6 +102,9 @@ def upload_subject_set(event_id):
         subject.save()
         new_subjects.append(subject)
 
+        if counter % 10 == 0:
+            print("Processed {} files".format(counter))
+
     subject_set.add(new_subjects)
 
 
@@ -94,6 +112,10 @@ if __name__ == '__main__':
     # event_date = "2010_02_27"
     # event_time = "T06_34_13.000"
     # event_id = event_date + event_time
-    event_id = "2012_04_11T08_38_37_000"
-    create_manifest(event_id)
-    upload_subject_set(event_id)
+    event_id = "2012/04/1108:39:31.4"
+    # create_manifest(event_id=event_id, path=DATA_PATH / 'Sumatra')
+
+    upload_subject_set(event_id, path=DATA_PATH / 'Sumatra',
+                      manifest='manifest_2021_03_10-03_15_56_AM - Copy.csv')
+
+
