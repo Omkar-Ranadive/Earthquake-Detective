@@ -266,6 +266,8 @@ class QuakeDataSet(Dataset):
 
         # Crop the time axis and boundaries for images from EQ detective
         if crop:
+            #  TODO This might not work for input images of different sizes
+            # TODO Instead of hard coding the crop, write code for relative cropping
             width, height = new_img.size
             new_img = new_img.crop((80, 0, width, height - 275))
 

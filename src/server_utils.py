@@ -95,8 +95,11 @@ def upload_subject_set(event_id, path, manifest):
 
         subject.links.project = project
         # Give local file path to upload
-        subject.add_location(str(folder_path / 'plots' / metadata['!image_name']))
+        # NOTE: The order is important here
+        # If audio is placed after plots then overlapping image issue occurs
+        # So make sure to follow the following order:
         subject.add_location(str(folder_path / 'audio' / metadata['!audio_name']))
+        subject.add_location(str(folder_path / 'plots' / metadata['!image_name']))
 
         subject.metadata.update(metadata)
         subject.save()
@@ -113,9 +116,9 @@ if __name__ == '__main__':
     # event_time = "T06_34_13.000"
     # event_id = event_date + event_time
     event_id = "2012/04/1108:39:31.4"
-    # create_manifest(event_id=event_id, path=DATA_PATH / 'Sumatra')
+    # create_manifest(event_id=event_id, path=DATA_PATH / 'Sumatra2')
 
-    upload_subject_set(event_id, path=DATA_PATH / 'Sumatra',
-                      manifest='manifest_2021_03_10-03_15_56_AM - Copy.csv')
+    upload_subject_set(event_id, path=DATA_PATH / 'Sumatra2',
+                      manifest='manifest_2021_04_07-02_15_29_AM.csv')
 
 

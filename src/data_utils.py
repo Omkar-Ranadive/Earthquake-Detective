@@ -257,7 +257,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
         folder_name (str): Name of the folder in which the data gets saved
         split (int): If > 1, data will be split into that many chunks
         dpi (int): The dpi controls the width, height of image. Dpi = 300 will save an image of
-                   size 1930x1211
+                   size fig_size_width*300, fig_size_height*300
 
     """
     print("Generating plots")
@@ -305,6 +305,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
             # Create the plots using matplotlib
             fig, ax = plt.subplots()
+            fig.set_size_inches(6, 3)  # Width, height
 
             # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
             x_coordinates = tr_cop.times('matplotlib')
@@ -339,7 +340,9 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                                 rename_channel(tr_cop.stats.channel), event_id, str(cut)))
             file_path = figure_path / (file_id + ".png")
 
-            plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            # plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            plt.savefig(file_path, dpi=dpi)
+
             plt.cla()
             plt.close(fig)  # Clear memory
 

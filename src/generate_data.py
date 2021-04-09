@@ -163,14 +163,14 @@ if __name__ == '__main__':
     # #          ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
     #
     audio_params = {'surface_len': 1000.0, 'damping': 4e-8}
-    plot_params = {'surface_len': 1000.0, 'dpi': 96}
+    plot_params = {'surface_len': 1000.0, 'dpi': 100}
 
     stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
 
     # print(len(stats))
     # print(stats[:250]) # 500:750 downloaded for the full length
-    data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:150],
-                             min_magnitude=8.6, folder_name='Sumatra', save_raw=False,
+    data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:5],
+                             min_magnitude=8.6, folder_name='Sumatra2', save_raw=False,
                              split=2, audio_params=audio_params, plot_params=plot_params)
 
 
