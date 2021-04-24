@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../../src/')
-from constants import DATA_PATH, META_PATH, n_classes, label_dict, index_to_label
+from constants import DATA_PATH, META_PATH, n_classes, label_dict, index_to_label, metric_to_index
 import pandas as pd
 import numpy as np
 import json
@@ -123,6 +123,7 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
     save_file(path=META_PATH, file=rel_dict, filename="rel_scores_v3")
 
 
+
 def map_users_to_index(user_stats):
     """
     Maps user_name strings to indices. Required for Pytorch processing. Can be used for user
@@ -166,30 +167,55 @@ def map_index_to_users(user_stats):
     return index_to_user
 
 
-def rel_stats(path):
+def rel_stats(path, metric='f_beta', top=1.0):
+    """
+
+    Args:
+        path (str): Path to the reliability scores dict
+        metric (str): Specifies which metric to check for. Default = 'f_beta'.
+            Other options:  'precision', 'recall', 'accuracy'
+        top (float): Which percentage of users to consider. Default = 1.0; all users
+
+    """
     rel_dict = load_file(path)
     rel_values = np.array(list(rel_dict.values()))
-    eq_scores = rel_values[:, 0, -1]
-    noise_scores = rel_values[:, 1, -1]
-    tremor_scores = rel_values[:, 2, -1]
-    noa_scores = rel_values[:, 3, -1]
+    index = metric_to_index[metric]
 
-    # Calculate the mean scores
-    print("Mean of eq scores: {}".format(np.nanmean(eq_scores)))
-    print("Mean of noise scores: {}".format(np.nanmean(noise_scores)))
-    print("Mean of tremor scores: {}".format(np.nanmean(tremor_scores)))
-    print("Mean of None of above event scores: {}".format(np.nanmean(noa_scores)))
+    # Get class-wise metric
+    scores = []
 
-    fig, ax = plt.subplots(nrows=2, ncols=2)
-    ax[0, 0].hist(eq_scores)
-    ax[0, 0].set_title("Earthquake")
-    ax[0, 1].hist(noise_scores)
-    ax[0, 1].set_title("Noise")
-    ax[1, 0].hist(tremor_scores)
-    ax[1, 0].set_title("Tremor")
-    ax[1, 1].hist(noa_scores)
-    ax[1, 1].set_title("None of the above")
-    plt.show()
+    for i, label in sorted(index_to_label.items()):
+        # TODO: Just getting rid of Nans for now, later when there aren't too many, handle it
+        #  differently
+
+        score = rel_values[:, i, index]
+        total_nan = len(np.where(np.isnan(score))[0])
+        print("For {}, Total values: {}, total nan values: {}".format(label, len(score),
+                                                                      total_nan))
+
+        score = score[~np.isnan(score)]  # Get rid of nan values
+        scores.append((label, -np.sort(-score)))  # Sort and store (in reverse order)
+
+    # Calculate results for the top n percent of users
+
+    for label, score in scores:
+        users = int(len(score)*top)  # Select top n%
+        mean_score = np.mean(score[:users])
+
+        print("Label: {}  Mean {} score for top {} ({}%) of users: {}".format(label, metric,
+                                                                              users, top*100,
+                                                                              mean_score))
+
+    # fig, ax = plt.subplots(nrows=2, ncols=2)
+    # ax[0, 0].hist(eq_scores_acc)
+    # ax[0, 0].set_title("Earthquake")
+    # ax[0, 1].hist(noise_scores_acc)
+    # ax[0, 1].set_title("Noise")
+    # ax[1, 0].hist(tremor_scores_acc)
+    # ax[1, 0].set_title("Tremor")
+    # ax[1, 1].hist(noa_scores_acc)
+    # ax[1, 1].set_title("None of the above")
+    # plt.show()
 
 
 if __name__ == '__main__':
@@ -197,7 +223,7 @@ if __name__ == '__main__':
     #                           user_stats='stats_users_12_09_2020-20_10_24.txt',
     #                           classifications='earthquake-detective-classifications.csv')
 
-    rel_stats(path=META_PATH / "rel_scores_v3")
+    rel_stats(path=META_PATH / "rel_scores_v3", top=0.4, metric='f_beta')
 
     # a = map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
     # counter = 0

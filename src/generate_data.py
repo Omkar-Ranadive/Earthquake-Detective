@@ -169,8 +169,8 @@ if __name__ == '__main__':
 
     # print(len(stats))
     # print(stats[:250]) # 500:750 downloaded for the full length
-    data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:5],
-                             min_magnitude=8.6, folder_name='Sumatra2', save_raw=False,
+    data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:250],
+                             min_magnitude=8.6, folder_name='Sumatra', save_raw=False,
                              split=2, audio_params=audio_params, plot_params=plot_params)
 
 

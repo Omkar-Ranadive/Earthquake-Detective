@@ -340,8 +340,9 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                                 rename_channel(tr_cop.stats.channel), event_id, str(cut)))
             file_path = figure_path / (file_id + ".png")
 
-            # plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
-            plt.savefig(file_path, dpi=dpi)
+            # NOTE: By using bbox_inches, the actual saved resolution will be smaller than expected
+            plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            # plt.savefig(file_path, dpi=dpi)
 
             plt.cla()
             plt.close(fig)  # Clear memory

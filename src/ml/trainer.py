@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 from constants import DATA_PATH, SAVE_PATH, n_classes
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, fbeta_score
+
 
 
 def train(num_epochs,
@@ -147,7 +148,8 @@ def generate_model_log(model, model_name, sample_set, names, set='test'):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     accuracies = []
     combined_mat = np.zeros((n_classes, n_classes))
-    total_loss = []
+    pred_all = np.zeros((0, ))
+    output_all = np.zeros((0, ))
 
     file_name = model_name[:-2] + '_' + set + '.txt'
     with open(SAVE_PATH / file_name, 'w') as f:
@@ -191,15 +193,26 @@ def generate_model_log(model, model_name, sample_set, names, set='test'):
                     correct_mat = (predicted == batch_out).squeeze()
                     correct_count = torch.sum(correct_mat).item()
                     accuracies.append(correct_count / len(predicted))
-                    conf_mat = confusion_matrix(y_true=batch_out.cpu().numpy(),
-                                                y_pred=predicted.cpu().numpy(), labels=range(n_classes))
+                    y_true = batch_out.cpu().numpy()
+                    y_pred = predicted.cpu().numpy()
+                    conf_mat = confusion_matrix(y_true=y_true,
+                                                y_pred=y_pred, labels=range(n_classes))
                     combined_mat += conf_mat
+
+                    pred_all = np.append(pred_all, y_pred)
+                    output_all = np.append(output_all, y_true)
 
         if set != 'unlabeled':
             f.write("Confusion Matrix: \n")
             np.savetxt(f, combined_mat, fmt='%i')
+            precision = precision_score(y_true=output_all, y_pred=pred_all, average=None)
+            recall = recall_score(y_true=output_all, y_pred=pred_all, average=None)
+            fscore = fbeta_score(y_true=output_all, y_pred=pred_all, average=None, beta=1.0)
 
             f.write("\n Accuracy: {} ".format(np.mean(accuracies)))
+            f.write("\nPrecision: {}".format(precision))
+            f.write("\nRecall: {}".format(recall))
+            f.write("\nF beta score: {}".format(fscore))
 
         f.close()
 

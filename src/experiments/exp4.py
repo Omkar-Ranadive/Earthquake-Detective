@@ -23,9 +23,9 @@ learning_rate = 1e-5
 
 
 transform_and_save = False
-load_transformed = False
+load_transformed = True
 train_mod = False
-gen_stats = False
+gen_stats = True
 
 
 J, Q = 8, 64
@@ -111,7 +111,7 @@ if load_transformed:
     transformed_train = load_file_jl('combined_train_{}_J{}_Q{}'.format(exp_name, J, Q))
     transformed_test = load_file_jl('combined_test_{}_J{}_Q{}'.format(exp_name, J, Q))
     transformed_gold = load_file_jl('combined_test_gold{}_J{}_Q{}'.format(exp_name, J, Q))
-    print(transformed_train[0]['data'][1].shape)
+    print(len(transformed_train), len(transformed_test), len(transformed_gold))
 
 # Train the model
 if train_mod:
@@ -150,6 +150,10 @@ if gen_stats:
 
     generate_model_log(model=model, model_name=model_name, sample_set=transformed_test,
                        names=X_names, set='test')
+
+    generate_model_log(model=model, model_name=model_name, sample_set=transformed_gold,
+                       names=X_names, set='gold')
+
 
 
 
