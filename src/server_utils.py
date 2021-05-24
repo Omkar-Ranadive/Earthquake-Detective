@@ -116,9 +116,9 @@ if __name__ == '__main__':
     # event_time = "T06_34_13.000"
     # event_id = event_date + event_time
     event_id = "2012/04/1108:39:31.4"
-    # create_manifest(event_id=event_id, path=DATA_PATH / 'Sumatra2')
-
-    upload_subject_set(event_id, path=DATA_PATH / 'Sumatra2',
-                      manifest='manifest_2021_04_07-02_15_29_AM.csv')
-
+    # create_manifest(event_id=event_id, path=DATA_PATH / 'BSSA_Part4')
+    #
+    upload_subject_set(event_id, path=DATA_PATH / 'BSSA_Part4',
+                      manifest='manifest_2021_04_27-02_38_27_AM.csv')
+    #
 

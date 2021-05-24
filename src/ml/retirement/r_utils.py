@@ -123,7 +123,6 @@ def calculate_reliability_mat(golden_samples, user_stats, classifications):
     save_file(path=META_PATH, file=rel_dict, filename="rel_scores_v3")
 
 
-
 def map_users_to_index(user_stats):
     """
     Maps user_name strings to indices. Required for Pytorch processing. Can be used for user
@@ -223,7 +222,7 @@ if __name__ == '__main__':
     #                           user_stats='stats_users_12_09_2020-20_10_24.txt',
     #                           classifications='earthquake-detective-classifications.csv')
 
-    rel_stats(path=META_PATH / "rel_scores_v3", top=0.4, metric='f_beta')
+    rel_stats(path=META_PATH / "rel_scores_v3", top=1.0, metric='f_beta')
 
     # a = map_users_to_index(user_stats='stats_users_12_09_2020-20_10_24.txt')
     # counter = 0
