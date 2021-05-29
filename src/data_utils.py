@@ -253,6 +253,7 @@ def process_data(event_id, st, sampling_rate, pre_filt=(1.2, 2, 8, 10), water_le
 
     return st
 
+
 def load_and_process(event_id, stations, st, min_magnitude=7, event_client="USGS", event_et=3600,
                      stat_client="IRIS", inv=None, save_raw=True, save_processed=True,
                      process_d=True, sampling_rate=40.0, gen_plot=True, gen_audio=True,
@@ -318,7 +319,7 @@ def load_and_process(event_id, stations, st, min_magnitude=7, event_client="USGS
 
 
 def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
-                   folder_name="default_folder", split=1, dpi=300):
+                   folder_name="default_folder", split=1, dpi=300, damping=4e-8):
     """
     Generate trimmed plots of the seismograms
     Args:
@@ -338,6 +339,9 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
     """
     print("Generating plots")
+
+    # Set axis limit to 3 times damping value
+    y_limit = 3*damping
 
     # Make sure the right folders are created
     folder_path = create_folders(event_id,  folder_name=folder_name)
@@ -392,7 +396,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
             ax.xaxis_date()
             # Limit the y axis to known local earthquake range.
-            ax.set_ylim(-1e-7, 1e-7)
+            ax.set_ylim(-y_limit, y_limit)
             # Trim any unnecessary space around x axis by limiting to its range
             ax.set_xlim(left=np.min(x_coordinates), right=np.max(x_coordinates))
             # Hide the y-axis values
@@ -426,28 +430,39 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
 
 def generate_plots_from_trimmed(event_id, st, folder_path, group_vel=4.5, surface_len=2000.0,
-                                split=1, dpi=300, threshold=5e-8):
+                                split=1, dpi=300, damping=4e-8, save_folder='plots_filtered'):
     """
     If trim data is already available use it to directly generate the plots
 
     Returns:
 
     """
-    if not os.path.exists(folder_path / 'plots_filtered'):
-        os.mkdir(folder_path / 'plots_filtered')
+    if not os.path.exists(folder_path / save_folder):
+        os.mkdir(folder_path / save_folder)
+    if not os.path.exists(folder_path / 'plots_filtered_bad'):
+        os.mkdir(folder_path / 'plots_filtered_bad')
 
     event_id = clean_event_id(event_id)
+
+    y_limit = 3*damping
+    threshold = 2*damping
 
     # Trim Seismograms
     for index, tr in enumerate(st):
         if index % 50 == 0:
             print("Processed {} plots".format(index))
         # Create the plots using matplotlib
-        mask = np.logical_or(tr.data > threshold, tr.data < -threshold)
-        # print(sum(mask), len(tr.data), np.mean(tr.data))
+        mask = np.logical_or(tr.data > damping, tr.data < -damping)
+        std = np.std(tr.data)
+
         percent_over = sum(mask) / len(tr.data)
 
-        if percent_over < 0.25:
+        # print(sum(mask), len(tr.data), np.mean(tr.data))
+        # print(tr)
+        # print(std, threshold, percent_over, tr.stats.split)
+        # print("*" * 20)
+
+        if percent_over < 0.3:
             fig, ax = plt.subplots()
             fig.set_size_inches(6, 3)  # Width, height
 
@@ -459,7 +474,7 @@ def generate_plots_from_trimmed(event_id, st, folder_path, group_vel=4.5, surfac
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
             ax.xaxis_date()
             # Limit the y axis to known local earthquake range.
-            ax.set_ylim(-1e-7, 1e-7)
+            ax.set_ylim(-y_limit, y_limit)
             # Trim any unnecessary space around x axis by limiting to its range
             ax.set_xlim(left=np.min(x_coordinates), right=np.max(x_coordinates))
             # Hide the y-axis values
@@ -479,7 +494,51 @@ def generate_plots_from_trimmed(event_id, st, folder_path, group_vel=4.5, surfac
             plt.subplots_adjust(left=0.001, right=0.999, top=1.0, bottom=0.35)
 
             # Save the figure
-            figure_path = folder_path / 'plots_filtered'
+            figure_path = folder_path / save_folder
+            file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
+                                rename_channel(tr.stats.channel), event_id, str(tr.stats.split)))
+            file_path = figure_path / (file_id + ".png")
+
+            # NOTE: By using bbox_inches, the actual saved resolution will be smaller than expected
+            plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            # plt.savefig(file_path, dpi=dpi)
+
+            plt.cla()
+            plt.close(fig)  # Clear memory
+
+        else:
+            fig, ax = plt.subplots()
+            fig.set_size_inches(6, 3)  # Width, height
+
+            # Tr.times('matplotlib') returns time in number of days since day 0001 (i.e 01/01/01 AD)
+            x_coordinates = tr.times('matplotlib')
+
+            ax.plot(tr.times('matplotlib'), tr.data, c='b')
+            # Format x axis in readable data format
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+            ax.xaxis_date()
+            # Limit the y axis to known local earthquake range.
+            ax.set_ylim(-y_limit, y_limit)
+            # Trim any unnecessary space around x axis by limiting to its range
+            ax.set_xlim(left=np.min(x_coordinates), right=np.max(x_coordinates))
+            # Hide the y-axis values
+            ax.get_yaxis().set_ticks([])
+
+            ax.set_xlabel('Time (UTC)')
+
+            # Set the axis locators (doesn't affect the data values, only makes the plot look better)
+            ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=5))
+            ax.xaxis.set_minor_locator(mdates.MinuteLocator(interval=1))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+            fig.autofmt_xdate()
+            # Rotate the data labels for a tight fit
+            ax.xaxis.set_tick_params(rotation=70)
+
+            # Cut out unnecessary empty space from figure
+            plt.subplots_adjust(left=0.001, right=0.999, top=1.0, bottom=0.35)
+
+            # Save the figure
+            figure_path = folder_path / 'plots_filtered_bad'
             file_id = "_".join((tr.stats.network, tr.stats.station, tr.stats.location,
                                 rename_channel(tr.stats.channel), event_id, str(tr.stats.split)))
             file_path = figure_path / (file_id + ".png")

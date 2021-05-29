@@ -7,21 +7,28 @@ from utils import clean_event_id
 from datetime import datetime
 
 
-def create_manifest(event_id, path):
+def create_manifest(event_id, path, use_filtered=True):
     """
     Create a .csv file mapping different files types of same data
     Args:
         event_id (str): Ideally should be time stamp YYYY-MM-DDTHH:MM:SS.000
         path (str): Path to folder
+        use_filtered (bool): If true, plots are loaded from plots_filtered folder
     """
     # Load the required files and sort them to ensure correct mapping
     event_id = clean_event_id(event_id)
     audio_files = sorted(os.listdir(path / event_id / 'audio'))
-    image_files = sorted(os.listdir(path / event_id / 'plots'))
 
-    # Ensure number of files are same in both directories
-    assert len(audio_files) == len(image_files), "Error: No. of audio files differ from no. of " \
-                                                 "image files"
+    if use_filtered:
+        image_files = sorted(os.listdir(path / event_id / 'plots_filtered'))
+        # If we are using filtered plots, then plots < audio files
+        # So only select that subset of audio samples
+        trailing_audio_info = audio_files[0][-8:]  # Gets the last part, ex - _400.mp3
+        imgs = [img[:-4] for img in image_files]
+        audio_files = [img+trailing_audio_info for img in imgs]
+
+    else:
+        image_files = sorted(os.listdir(path / event_id / 'plots'))
 
     # Only upload the BHZ channels
     filtered_audio = [af for af in audio_files if 'BHZ' in af]
@@ -38,7 +45,7 @@ def create_manifest(event_id, path):
     df.to_csv(str(path / event_id / filename))
 
 
-def upload_subject_set(event_id, path, manifest):
+def upload_subject_set(event_id, path, manifest, use_filtered=True):
     """
     NOTE: This function only runs on Python terminal, don't use Pycharm's console (due to
     getpass module)
@@ -48,9 +55,11 @@ def upload_subject_set(event_id, path, manifest):
         event_id (str): Ideally should be time stamp YYYY-MM-DDTHH:MM:SS.000
         path (str): Path to
         manifest (str): The name of manifest (.csv) file created using creat_manifest func
+        use_filtered (bool): If true, plots are loaded from the use_filtered folder
     """
     event_id = clean_event_id(event_id)
     folder_path = path / event_id
+    plots_folder = 'plots_filtered' if use_filtered else 'plots'
     # Get user credentials
     username = input('Username (Zooniverse): ')
     password = getpass.getpass("Password: ")
@@ -99,7 +108,7 @@ def upload_subject_set(event_id, path, manifest):
         # If audio is placed after plots then overlapping image issue occurs
         # So make sure to follow the following order:
         subject.add_location(str(folder_path / 'audio' / metadata['!audio_name']))
-        subject.add_location(str(folder_path / 'plots' / metadata['!image_name']))
+        subject.add_location(str(folder_path / plots_folder / metadata['!image_name']))
 
         subject.metadata.update(metadata)
         subject.save()
@@ -116,9 +125,9 @@ if __name__ == '__main__':
     # event_time = "T06_34_13.000"
     # event_id = event_date + event_time
     event_id = "2012/04/1108:39:31.4"
-    # create_manifest(event_id=event_id, path=DATA_PATH / 'BSSA_Part4')
+    # create_manifest(event_id=event_id, path=DATA_PATH / 'BSSA')
     #
-    upload_subject_set(event_id, path=DATA_PATH / 'BSSA_Part4',
-                      manifest='manifest_2021_04_27-02_38_27_AM.csv')
-    #
+    upload_subject_set(event_id, path=DATA_PATH / 'BSSA',
+                      manifest='manifest_2021_05_28-10_08_22_PM.csv')
+
 

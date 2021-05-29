@@ -142,41 +142,41 @@ def load_station_list(file_path):
 
 if __name__ == '__main__':
     #
-    # filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['100'],
-    #             name='u100')
-    #
-    # event_info, user_info = load_info_from_labels(path=DATA_PATH /
-    #                                                    'classification_data_filtered.txt')
+    filter_data(path=DATA_PATH / 'classification_data_all_users.txt', user_ids=['100'],
+                name='u100')
 
-    # print(event_info)
-    # for event_id, stations in event_info.items():
-    #     data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
-    #                              min_magnitude=7, folder_name='User100', save_raw=False)
+    event_info, user_info = load_info_from_labels(path=DATA_PATH /
+                                                       'classification_data_u100.txt')
+
+    print(event_info)
+    for event_id, stations in event_info.items():
+        data_utils.download_data(event_id=event_id, event_et=3600, stations=stations,
+                                 min_magnitude=7, folder_name='User100', save_raw=False)
 
     # save_downloaded_sub_ids_info(event_info, user_info)
 
-    """
-    Sumatra Earthquake
-    """
-    eid = '2012/04/1108:39:31.4'
-    # # stats = [['UU', 'SRU', '', 'BHZ,BHN,BHE'], ['TA', 'H17A', '', 'BHZ,BHN,BHE'],
-    # #          ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
+    # """
+    # Sumatra Earthquake
+    # """
+    # eid = '2012/04/1108:39:31.4'
+    # # # stats = [['UU', 'SRU', '', 'BHZ,BHN,BHE'], ['TA', 'H17A', '', 'BHZ,BHN,BHE'],
+    # # #          ['US', 'SDCO', '00', 'BHZ,BH1,BH2']]
+    # #
+    # audio_params = {'surface_len': 1000.0, 'damping': 4e-8}
+    # plot_params = {'surface_len': 1000.0, 'dpi': 100}
     #
-    audio_params = {'surface_len': 1000.0, 'damping': 4e-8}
-    plot_params = {'surface_len': 1000.0, 'dpi': 100}
-
-    stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
-
-    print(len(stats))
-    # print(stats[:250]) # 500:750 downloaded for the full length
-    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[750:],
-    #                          min_magnitude=8.6, folder_name='BSSA_Part4', save_raw=False,
+    # stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
+    #
+    # print(len(stats))
+    # # print(stats[:250]) # 500:750 downloaded for the full length
+    # # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[750:],
+    # #                          min_magnitude=8.6, folder_name='BSSA_Part4', save_raw=False,
+    # #                          split=2, audio_params=audio_params, plot_params=plot_params)
+    # #
+    #
+    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:5],
+    #                          min_magnitude=8.6, folder_name='Test', save_raw=False,
     #                          split=2, audio_params=audio_params, plot_params=plot_params)
-    #
-
-    data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:5],
-                             min_magnitude=8.6, folder_name='Test', save_raw=False,
-                             split=2, audio_params=audio_params, plot_params=plot_params)
 
     #
     # """
