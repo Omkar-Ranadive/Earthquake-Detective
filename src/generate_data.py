@@ -165,20 +165,20 @@ if __name__ == '__main__':
     # audio_params = {'surface_len': 1000.0, 'damping': 4e-8}
     # plot_params = {'surface_len': 1000.0, 'dpi': 100}
     #
-    # stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
-    #
-    # print(len(stats))
-    # # print(stats[:250]) # 500:750 downloaded for the full length
-    # # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[750:],
-    # #                          min_magnitude=8.6, folder_name='BSSA_Part4', save_raw=False,
-    # #                          split=2, audio_params=audio_params, plot_params=plot_params)
-    # #
-    #
-    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:5],
-    #                          min_magnitude=8.6, folder_name='Test', save_raw=False,
-    #                          split=2, audio_params=audio_params, plot_params=plot_params)
+    stats = load_station_list(file_path=DATA_PATH / 'BSSA' / '20120411_station_list.txt')
 
+    print(len(stats))
+    # print(stats[:250]) # 500:750 downloaded for the full length
+    # data_utils.download_data(event_id=eid, event_et=3600, stations=stats[750:],
+    #                          min_magnitude=8.6, folder_name='BSSA_Part4', save_raw=False,
+    #                          split=2, audio_params=audio_params, plot_params=plot_params)
     #
+
+    data_utils.download_data(event_id=eid, event_et=3600, stations=stats[:5],
+                             min_magnitude=8.6, folder_name='Test', save_raw=False,
+                             split=2, audio_params=audio_params, plot_params=plot_params)
+
+
     # """
     # Split data testing
     # """
