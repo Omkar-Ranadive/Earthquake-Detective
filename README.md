@@ -18,6 +18,10 @@ conda activate quakedet
 ```
 pip install -r requirements.txt
 ```
+* Install Obspy 
+```
+conda install obspy
+```
 * Install cartopy [optional, for plotting 3d plots] 
 ```
 conda install cartopy 
