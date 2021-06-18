@@ -128,6 +128,6 @@ if __name__ == '__main__':
     # create_manifest(event_id=event_id, path=DATA_PATH / 'BSSA')
     #
     upload_subject_set(event_id, path=DATA_PATH / 'BSSA',
-                      manifest='manifest_2021_05_28-10_08_22_PM.csv')
+                      manifest='manifest_2021_06_16-02_10_34_AM.csv')
 
 

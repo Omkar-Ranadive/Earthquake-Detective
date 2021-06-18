@@ -319,7 +319,7 @@ def load_and_process(event_id, stations, st, min_magnitude=7, event_client="USGS
 
 
 def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surface_len=2000.0,
-                   folder_name="default_folder", split=1, dpi=300, damping=4e-8):
+                   folder_name="default_folder", split=1, dpi=100, damping=4e-8):
     """
     Generate trimmed plots of the seismograms
     Args:
@@ -334,8 +334,8 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
                              trimmed trace will be
         folder_name (str): Name of the folder in which the data gets saved
         split (int): If > 1, data will be split into that many chunks
-        dpi (int): The dpi controls the width, height of image. Dpi = 300 will save an image of
-                   size fig_size_width*300, fig_size_height*300
+        dpi (int): The dpi controls the width, height of image. Dpi = 100 will save an image of
+                   size fig_size_width*100, fig_size_height*100
 
     """
     print("Generating plots")
@@ -430,7 +430,7 @@ def generate_plots(event_id, st, origin, inv, sampling_rate, group_vel=4.5, surf
 
 
 def generate_plots_from_trimmed(event_id, st, folder_path, group_vel=4.5, surface_len=2000.0,
-                                split=1, dpi=300, damping=4e-8, save_folder='plots_filtered'):
+                                split=1, dpi=100, damping=4e-8, save_folder='plots_filtered'):
     """
     If trim data is already available use it to directly generate the plots
 

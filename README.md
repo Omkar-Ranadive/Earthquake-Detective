@@ -28,8 +28,8 @@ conda install cartopy
 ```
 * Install PyTorch by following the instructions [here.](https://pytorch.org/get-started/locally/)
 
-## Additional Instructions (Windows): 
-* For libmagic to correctly work, follow the instructions [here.](https://github.com/ahupp/python-magic#windows)
+## Additional Instructions: 
+* For libmagic to correctly work, follow the instructions [here.](https://github.com/ahupp/python-magic#installation)
 
 ## Dataset 
 * The classification information can be downloaded from [here.]( https://northwestern.box.com/s/jr5y9nw913z2s2artp84vs7f0b7kb8b8) Header format:

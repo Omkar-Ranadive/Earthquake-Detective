@@ -36,4 +36,4 @@ if __name__ == '__main__':
     #                              split=2, audio_params=audio_params, plot_params=plot_params)
 
     st = load_traces(folder / 'trimmed_data')
-    data_utils.generate_plots_from_trimmed(event_id=eid, st=st, folder_path=folder)
+    data_utils.generate_plots_from_trimmed(event_id=eid, st=st, folder_path=folder, dpi=100)
